@@ -1,0 +1,112 @@
+# ChromiumAI .gitignore
+
+# Build outputs
+/out/
+/build/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Chromium specific
+/chromium/out/
+/chromium/.gclient*
+/chromium/.cipd/
+/chromium/buildtools/
+/chromium/third_party/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+env/
+ENV/
+
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Node.js / React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+.pnp.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# AI service specific
+ai-integration/api-service/python/.env
+ai-integration/api-service/rust/.env
+
+# Test outputs
+test-results/
+coverage/
+*.coverage
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Configuration overrides
+configs/local.yaml
+configs/development.yaml
+
+# Performance reports
+performance-reports/
+benchmark-results/
+
+# GAIA test data
+tests/gaia/data/
+tests/gaia/results/
+
+# Chromium subtree merge artifacts
+*.orig

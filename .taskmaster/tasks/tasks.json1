@@ -1,0 +1,139 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Establish Chromium Fork and Build System Foundation",
+        "description": "Create a true fork of the Chromium repository and set up the basic cross-platform build system. This initial setup will not include AI features but will ensure the browser can be compiled and run on target platforms (Windows, macOS, Linux).",
+        "details": "Use a git subtree strategy to manage the upstream Chromium source. Configure the basic build toolchain (GN, Ninja) for a vanilla Chromium build. Create a placeholder for the chrome://ai-browser/ WebUI registration within the Chromium source code.",
+        "testStrategy": "Successfully compile and run the forked Chromium browser on at least one target platform (e.g., Linux). Verify that the browser functions identically to the upstream version. Navigate to chrome://ai-browser/ and confirm it loads a blank or placeholder page.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Initialize FastAPI Service for AI Integration Layer",
+        "description": "Set up the initial Python FastAPI application that will serve as the AI integration layer. This includes basic project structure, dependency management, and essential endpoints for health and configuration.",
+        "details": "Create a new Python project with FastAPI. Implement a `/health` endpoint that returns a 200 OK status. Configure CORS to allow requests from the chrome://ai-browser/ origin. Define initial Pydantic models for the `ConfigurationState` data model.",
+        "testStrategy": "Run the FastAPI server locally. Use `curl` or a similar tool to hit the `/health` endpoint and verify a successful response. Check server logs for startup without errors.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Define Core Data Models and ACP Message Structure",
+        "description": "Implement the core data structures required for agent communication and API compatibility, specifically the `ACPMessage` and `AnthropicRequest`/`Response` models.",
+        "details": "Using Pydantic, define Python classes that match the IBM ACP message structure. Create Pydantic models for the Anthropic-compatible API endpoint (`/v1/messages`) to ensure seamless integration with existing tools.",
+        "testStrategy": "Write unit tests for the Pydantic models to ensure they correctly validate expected input and raise errors for invalid data structures. These tests will not require a running server.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Mock ACP Runtime for Agent Development",
+        "description": "Develop a mock Agent Communication Protocol (ACP) runtime. This component will simulate message passing between agents, allowing for independent development and testing of agents before the full orchestration logic is complete.",
+        "details": "Create a Python class or module that can register mock agents and route `ACPMessage` objects between them based on recipient IDs. The mock runtime should log all message traffic for debugging purposes.",
+        "testStrategy": "Write unit tests to verify that the mock runtime can register multiple agents and correctly route a message from a sender to a specific recipient. Test that messages to unregistered agents are handled gracefully.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Setup React WebUI for chrome://ai-browser/",
+        "description": "Initialize the React frontend project that will serve as the user interface for the `chrome://ai-browser/` page. This task includes setting up the project structure, dependencies, and a basic component layout.",
+        "details": "Use Create React App or a similar toolchain to bootstrap the project. Create placeholder components for the main UI areas: Chat Interface, Agent Status Monitor, and Provider Configuration. Set up basic routing if necessary.",
+        "testStrategy": "Run the React development server and verify that the basic application shell renders in a standard web browser without errors. The UI will not be functional yet but should display the placeholder components.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Anthropic-Compatible API Interception Endpoint",
+        "description": "Create the API endpoint (`/v1/messages`) in the FastAPI service that mimics the Anthropic API. This endpoint will act as the primary entry point for AI requests, intercepting them to be routed to the agent swarm.",
+        "details": "In the FastAPI app, create a POST endpoint at `/v1/messages`. It should accept a body conforming to the `AnthropicRequest` model and, for now, return a mocked `AnthropicResponse`. This endpoint will later be connected to the Planning Agent.",
+        "testStrategy": "Use an API client like Postman or `curl` to send a valid Anthropic-style request to the `/v1/messages` endpoint. Verify that the server returns a 200 status code and a correctly formatted (mocked) response.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Develop the Planning Agent (ACP Orchestrator)",
+        "description": "Implement the Planning Agent, which serves as the central orchestrator within the ACP swarm. This agent will receive incoming requests from the API layer and route them to the appropriate specialized agent.",
+        "details": "Create a new agent class inheriting from a base agent structure. The Planning Agent's primary logic will be to inspect an incoming request (e.g., from the `/v1/messages` endpoint) and create a new `ACPMessage` addressed to the correct specialized agent (initially, the Level 1 agent).",
+        "testStrategy": "Write unit tests for the Planning Agent's routing logic. Using the mock ACP runtime, send a sample request to the Planning Agent and verify it correctly forwards a new message to the intended specialized agent's ID.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement GAIA Level 1 Specialized Agent",
+        "description": "Create the first specialized agent for handling GAIA Level 1 tasks, which involve quick reasoning and simple queries. This agent will process requests from the Planning Agent and return a result.",
+        "details": "Develop an agent class that can receive an `ACPMessage` from the Planning Agent. It will perform a simple task, such as calling an external LLM with a direct prompt, and then formulate a response `ACPMessage` to be sent back.",
+        "testStrategy": "Test the Level 1 agent in isolation using the mock ACP runtime. Send it a message simulating a request from the Planning Agent and verify that it processes the request and generates a valid response message.",
+        "priority": "medium",
+        "dependencies": [
+          7
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Connect WebUI to Backend with a Basic Chat Interface",
+        "description": "Implement a basic chat interface in the React WebUI and connect it to the FastAPI backend's `/v1/messages` endpoint. This will enable the first end-to-end user interaction.",
+        "details": "In the React app, build a simple chat component with a text input and a message display area. On form submission, the component should make a `fetch` or `axios` call to the local FastAPI server's `/v1/messages` endpoint and display the returned response.",
+        "testStrategy": "Run both the FastAPI server and the React dev server. Open the React app in a browser, type a message into the chat input, and submit. Verify that the request is sent to the backend and the mocked response is displayed in the chat interface.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Create Basic GAIA Benchmark Runner",
+        "description": "Develop a script or API endpoint to run a small subset of the GAIA benchmark and track basic performance metrics. This is a foundational step for future optimization.",
+        "details": "Create a new endpoint, `/gaia/benchmark`, in the FastAPI service. When triggered, this endpoint should load a few Level 1 GAIA questions from a local file, send them through the `/v1/messages` endpoint, and log the success/failure of the responses. Define the `GAIAMetrics` Pydantic model.",
+        "testStrategy": "Trigger the `/gaia/benchmark` endpoint. Verify that the server logs show the benchmark questions being processed by the agent swarm and that it outputs basic accuracy metrics (e.g., '2/3 correct').",
+        "priority": "low",
+        "dependencies": [
+          8
+        ],
+        "status": "todo",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-09-18T07:55:13.834Z",
+      "updated": "2025-09-18T07:55:41.398Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

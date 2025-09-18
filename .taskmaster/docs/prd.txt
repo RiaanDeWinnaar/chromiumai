@@ -1,0 +1,158 @@
+<context>
+# Overview  
+ChromiumAI is a true Chromium fork with invisible AI integration, designed to outperform Perplexity Comet through GAIA-optimized agent swarm capabilities. Unlike AI browser wrappers, ChromiumAI maintains 100% Chromium compatibility while adding a 1% AI integration layer that provides native AI browsing capabilities through chrome://ai-browser/ WebUI and API interception patterns.
+
+The product targets developers, researchers, and power users who need AI-native browsing capabilities without sacrificing the reliability and performance of standard Chromium. ChromiumAI specifically targets GAIA benchmark leadership with >90% overall accuracy across all complexity levels.
+
+# Core Features  
+**True Chromium Fork**: Maintains 99% unchanged Chromium functionality with invisible AI integration that preserves all existing browser capabilities and user experience.
+
+**ACP Agent Swarm**: IBM's Agent Communication Protocol enables coordinated multi-agent problem solving with specialized agents for different GAIA complexity levels (Level 1: quick reasoning, Level 2: multi-step research, Level 3: complex analysis).
+
+**chrome://ai-browser/ WebUI**: Native browser interface for AI configuration, agent monitoring, and direct AI interaction without disrupting normal browsing workflows.
+
+**API Interception Service**: Localhost service (port 3456) that intercepts AI API calls and routes them through the optimized agent swarm, enabling seamless integration with existing AI tools and workflows.
+
+**GAIA Benchmark Optimization**: Architecture specifically designed to excel at GAIA benchmark tasks with target accuracies of >95% Level 1, >90% Level 2, >80% Level 3.
+
+**Automated Chromium Upgrades**: Automated merge pipeline for maintaining compatibility with upstream Chromium releases while preserving AI integration features.
+
+# User Experience  
+**Primary User Personas**:
+- AI Researchers needing reliable AI-native browsing for research workflows
+- Developers building AI applications who need consistent AI API performance  
+- Power users wanting invisible AI assistance without browser switching
+
+**Key User Flows**:
+1. Normal browsing experience identical to Chromium with zero learning curve
+2. Optional AI activation via chrome://ai-browser/ for configuration and monitoring
+3. Transparent AI enhancement of browsing tasks through API interception
+4. Direct AI interaction through WebUI when needed for complex tasks
+
+**UI/UX Considerations**:
+- Zero disruption to existing Chromium user experience
+- AI features discoverable but not intrusive
+- Performance metrics and agent status visible for power users
+- One-click AI configuration and provider management
+</context>
+<PRD>
+# Technical Architecture  
+**System Components**:
+- Chromium Fork Base: True fork maintaining 99% compatibility with upstream
+- AI Integration Layer: FastAPI service (Phase 1) transitioning to Rust (Phase 2)
+- ACP Runtime: Agent Communication Protocol for coordinating specialized AI agents
+- WebUI Frontend: React-based chrome://ai-browser/ interface
+- Agent Swarm: GAIA-optimized agents (Planning, Level 1-3 specialized agents)
+
+**Data Models**:
+- ACPMessage: IBM ACP-compatible message structure for agent communication
+- AnthropicRequest/Response: API compatibility layer for seamless integration
+- GAIAMetrics: Performance tracking for benchmark optimization
+- ConfigurationState: Provider settings and agent configurations
+
+**APIs and Integrations**:
+- Anthropic API compatibility endpoint (/v1/messages) for transparent integration
+- Configuration API (/config) for WebUI management
+- Health monitoring (/health) for system status
+- GAIA benchmark runner (/gaia/benchmark) for performance evaluation
+
+**Infrastructure Requirements**:
+- Cross-platform build system (Windows, macOS, Linux)
+- Automated CI/CD pipeline with Chromium upgrade automation
+- Performance monitoring and GAIA benchmark integration
+- Git subtree management for upstream Chromium synchronization
+
+# Development Roadmap  
+**Phase 1 - FastAPI MVP (Weeks 1-6)**:
+- Chromium fork setup with minimal WebUI registration
+- FastAPI API service with ACP runtime implementation
+- Base agent classes and planning agent (ACP orchestrator)
+- GAIA Level 1-3 specialized agents with basic capabilities
+- React WebUI for chrome://ai-browser/ with chat interface, agent status, provider config
+- Basic GAIA benchmark runner and performance metrics
+- Cross-platform build system foundation
+
+**Phase 2 - Rust Optimization (Weeks 7-10)**:
+- Rust API server implementation with PyO3 Python bridge
+- Performance-optimized ACP runtime in Rust
+- Enhanced GAIA benchmark integration with detailed reporting
+- Production-ready agent implementations with advanced capabilities
+- Comprehensive WebUI with real-time performance monitoring
+- Advanced build system with automated testing
+
+**Phase 3 - Production Integration (Weeks 11-14)**:
+- Complete Chromium WebUI integration with native chrome:// protocol
+- Automated Chromium upgrade pipeline with conflict resolution
+- Production deployment scripts and cross-platform installers
+- Comprehensive documentation and developer tools
+- Performance optimization and memory management
+- Security hardening and audit preparation
+
+# Logical Dependency Chain
+**Foundation Layer (Must be built first)**:
+1. Chromium fork setup and basic WebUI registration
+2. FastAPI service with health endpoints and CORS configuration
+3. Base agent class and ACP message structures
+4. Mock ACP runtime for development and testing
+
+**Core Functionality (Build upon foundation)**:
+5. Planning agent (ACP orchestrator) for request routing
+6. Level 1 simple reasoning agent for basic queries
+7. React WebUI with basic chat interface
+8. API interception service with Anthropic compatibility
+
+**Enhanced Capabilities (Build upon core)**:
+9. Level 2 research coordinator and Level 3 deep analyzer agents
+10. Complete WebUI with agent monitoring and provider configuration
+11. GAIA benchmark runner and performance metrics
+12. Cross-platform build system
+
+**Production Readiness (Final integration)**:
+13. Rust optimization layer with Python bridge
+14. Automated Chromium upgrade pipeline
+15. Production deployment and security hardening
+16. Comprehensive testing and documentation
+
+# Risks and Mitigations  
+**Technical Challenges**:
+- Chromium fork complexity: Mitigate with git subtree strategy and automated merge pipeline
+- ACP protocol implementation: Start with simplified version, expand iteratively
+- Cross-platform build complexity: Use proven Chromium build tools and incremental platform support
+
+**MVP Definition and Scoping**:
+- MVP: Working FastAPI service with basic agent swarm and functional WebUI
+- Success criteria: Demonstrates AI integration without breaking Chromium functionality
+- Iterative improvement: Each phase builds upon previous with clear success metrics
+
+**Resource Constraints**:
+- Large Chromium codebase: Use git subtree to manage size and complexity
+- AI model costs: Implement efficient caching and request optimization
+- Development complexity: Prioritize FastAPI implementation before Rust optimization
+
+# Appendix  
+**Research Findings**:
+- GAIA benchmark baseline scores: L1 93.5%, L2 83.0%, L3 65.3%, Overall 83.4%
+- Perplexity Comet performance analysis shows opportunities in multi-agent coordination
+- IBM ACP protocol provides proven framework for agent communication
+
+**Technical Specifications**:
+- Target API latency: <100ms p95
+- Memory usage: <500MB per process
+- Build time: <30min on CI
+- Startup time: <2s cold start
+- Chromium compatibility: 100% existing functionality preserved
+
+**Development Environment**:
+- Python 3.9+ for FastAPI implementation
+- Rust 1.70+ for optimization phase
+- Node.js 18+ for React WebUI
+- Chromium build tools and dependencies
+- Cross-platform CI/CD with GitHub Actions
+
+**Success Metrics**:
+- GAIA Performance: >95% L1, >90% L2, >80% L3, >90% overall
+- User Experience: Zero disruption to normal browsing
+- Performance: API latency and memory usage targets met
+- Compatibility: All Chromium functionality preserved
+- Build Success: Automated builds across all target platforms
+</PRD>
