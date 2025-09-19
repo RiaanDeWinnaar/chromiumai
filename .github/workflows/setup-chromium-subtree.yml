@@ -1,0 +1,60 @@
+name: Setup Chromium Subtree
+on:
+  workflow_dispatch:  # Manual trigger only
+  push:
+    branches: [ master ]
+    paths: [ '.github/workflows/setup-chromium-subtree.yml' ]
+
+jobs:
+  setup-chromium:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Add Chromium subtree (shallow)
+        run: |
+          # Create a shallow clone of Chromium first
+          git clone --depth 1 --no-single-branch https://github.com/RiaanDeWinnaar/chromium.git chromium-temp
+          
+          # Add as subtree using the local clone
+          git subtree add --prefix=chromium --squash chromium-temp main
+          
+          # Clean up temporary clone
+          rm -rf chromium-temp
+      
+      - name: Configure sparse checkout for Chromium
+        run: |
+          cd chromium
+          git config core.sparseCheckout true
+          cat > .git/info/sparse-checkout << EOF
+          content/browser/webui/
+          chrome/browser/ui/webui/
+          chrome/common/webui_url_constants.cc
+          chrome/common/webui_url_constants.h
+          chrome/browser/BUILD.gn
+          chrome/browser/chrome_browser_main.cc
+          chrome/browser/chrome_browser_main.h
+          EOF
+          git read-tree -m -u HEAD
+      
+      - name: Commit Chromium subtree setup
+        run: |
+          git add chromium/
+          git commit -m "Add Chromium fork as git subtree with selective components
+          
+          - Added Chromium fork as subtree using shallow clone
+          - Configured sparse checkout for WebUI components only
+          - Includes content/browser/webui/ and chrome/browser/ui/webui/
+          - Ready for chrome://ai-browser/ protocol implementation"
+      
+      - name: Push changes
+        run: git push origin master
