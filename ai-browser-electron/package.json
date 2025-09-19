@@ -1,13 +1,42 @@
 {
-  "name": "ai-browser-electron",
+  "name": "chromiumai-browser",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "AI-Native Browser: True Chromium Fork with Invisible AI Integration",
+  "main": "main.js",
   "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "keywords": ["ai", "browser", "chromium", "electron", "webui"],
+  "author": "ChromiumAI Project",
+  "license": "BSD-3-Clause",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "build": {
+    "appId": "com.chromiumai.browser",
+    "productName": "ChromiumAI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "webui/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
 }
