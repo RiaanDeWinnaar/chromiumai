@@ -20,16 +20,14 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
       
-      - name: Add Chromium subtree (shallow)
+      - name: Add Chromium subtree (using commit hash)
         run: |
-          # Create a shallow clone of Chromium first
-          git clone --depth 1 --no-single-branch https://github.com/RiaanDeWinnaar/chromium.git chromium-temp
+          # Get the latest commit hash from Chromium repository
+          CHROMIUM_COMMIT=$(git ls-remote https://github.com/RiaanDeWinnaar/chromium.git main | cut -f1)
+          echo "Latest Chromium commit: $CHROMIUM_COMMIT"
           
-          # Add as subtree using the local clone
-          git subtree add --prefix=chromium --squash chromium-temp main
-          
-          # Clean up temporary clone
-          rm -rf chromium-temp
+          # Add as subtree using the commit hash directly
+          git subtree add --prefix=chromium --squash https://github.com/RiaanDeWinnaar/chromium.git $CHROMIUM_COMMIT
       
       - name: Configure sparse checkout for Chromium
         run: |
@@ -51,7 +49,7 @@ jobs:
           git add chromium/
           git commit -m "Add Chromium fork as git subtree with selective components
           
-          - Added Chromium fork as subtree using shallow clone
+          - Added Chromium fork as subtree using commit hash approach
           - Configured sparse checkout for WebUI components only
           - Includes content/browser/webui/ and chrome/browser/ui/webui/
           - Ready for chrome://ai-browser/ protocol implementation"
