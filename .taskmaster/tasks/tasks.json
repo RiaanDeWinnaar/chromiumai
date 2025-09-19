@@ -3,143 +3,43 @@
     "tasks": [
       {
         "id": 1,
-        "title": "Setup ChromiumAI Fork and Development Environment",
-        "description": "Create true Chromium fork with git subtree management and establish cross-platform development environment with build dependencies",
-        "details": "1. Fork Chromium repository using git subtree strategy for manageable size\n2. Setup development environment with Python 3.9+, Rust 1.70+, Node.js 18+\n3. Configure Chromium build tools and dependencies for Windows, macOS, Linux\n4. Establish GitHub Actions CI/CD pipeline foundation\n5. Create project structure with separate directories for AI integration layer\n6. Implement initial build scripts targeting <30min CI build time\n7. Verify Chromium builds successfully across all target platforms",
-        "testStrategy": "Validate successful Chromium build on all platforms, verify git subtree operations, confirm development environment setup with dependency checks",
+        "title": "Setup Chromium Fork and WebUI Registration",
+        "description": "Create true Chromium fork with minimal WebUI registration for chrome://ai-browser/ protocol",
+        "details": "Fork upstream Chromium repository using git subtree strategy. Implement minimal WebUI registration in Chromium's content/browser/webui directory to handle chrome://ai-browser/ protocol. Create basic WebUIController and WebUIDataSource classes. Configure build system to include new WebUI components. Ensure 99% Chromium functionality preservation.\n<info added on 2025-09-18T13:54:13.379Z>\nBased on the research session findings, here are key implementation details and best practices that should be incorporated:\n\n**Repository Strategy**: Use git subtree with upstream-chromium remote for single-repo approach. Keep ai-related code outside chromium/ subtree to avoid merge conflicts. Command pattern: `git remote add upstream-chromium https://chromium.googlesource.com/chromium/src.git` followed by `git subtree add --prefix=chromium upstream-chromium main --squash` for initial setup and `git subtree pull --prefix=chromium upstream-chromium main --squash` for updates.\n\n**Minimal-Diff Principle**: Register new WebUI via additive code in dedicated directories (chrome/browser/ui/webui/ai_browser/). Avoid editing core Chromium files. Use feature flag guard with `base::FeatureList::IsEnabled(kAIBrowserWebUI)` for runtime safety and regression prevention.\n\n**Build System Integration**: Create BUILD.gn file in chrome/browser/ui/webui/ai_browser/ with source_set dependencies on //content/public/browser, //ui/base, and //chrome/browser. Use GN args overlays for platform-specific configurations with shared baseline: is_component_build=true, enable_nacl=false, blink_symbol_level=0, symbol_level=1.\n\n**WebUI Controller Implementation**: Extend ChromeWebUIControllerFactory::GetWebUIFactoryFunction with conditional for ai-browser host. Implement AIBrowserUI class inheriting content::WebUIController with CreateDataSource method for resource packaging via grit system.\n\n**Development Mode Support**: Enable conditional loading from FastAPI service at http://localhost:3456 for development with --allow-insecure-localhost flag. Production uses embedded resources through WebUIDataSource with IDR_AI_BROWSER_INDEX_HTML resource ID.\n\n**Testing Framework**: Add browser test using content_browsertests harness with IN_PROC_BROWSER_TEST_F to verify chrome://ai-browser/ loads successfully with HTTP 200 status and no console errors. Include core test shards validation to confirm no Chromium functionality regressions.\n\n**Patch Management**: Maintain quilt-style or git-format-patch series for isolated changes. Each patch should have single responsibility: URL scheme registration, WebUI bundle inclusion, permission adjustments. Enforce pre-push script to ensure only expected directories are modified.\n</info added on 2025-09-18T13:54:13.379Z>\n<info added on 2025-09-18T14:16:56.119Z>\n**Detailed WebUI Implementation Guide**: Based on comprehensive research findings, here are specific implementation patterns for the chrome://ai-browser/ WebUI registration:\n\n**Core WebUIController Implementation Pattern**: Create AiBrowserUI class in content/browser/webui/ai_browser_ui.h inheriting from content::WebUIController. The constructor should call content::WebUIDataSource::Create(chrome::kAiBrowserHost) and configure resource paths using AddResourcePath() for JavaScript, CSS, and HTML files. Use SetDefaultResource(IDR_AI_BROWSER_HTML) for the main page resource.\n\n**Protocol Registration in ChromeWebUIControllerFactory**: Modify chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc by adding conditional logic in CreateWebUIControllerForURL() method to check for url.host() == chrome::kAiBrowserHost and return new AiBrowserUI(web_ui). This ensures proper routing to the custom WebUI controller.\n\n**BUILD.gn Integration Strategy**: Create source_set(\"webui\") in content/browser/webui/BUILD.gn with sources listing ai_browser_ui.cc/h files and dependencies on //base, //content/public/browser, and //ui/base. Ensure proper dependency chains to support the agent monitoring dashboard components.\n\n**GRIT Resource System Configuration**: Define resource IDs in appropriate .grd files using include elements with names like IDR_AI_BROWSER_HTML, IDR_AI_BROWSER_JS, and IDR_AI_BROWSER_CSS. Set type=\"BINDATA\" for proper binary resource handling. The GRIT system will generate resource headers that WebUIDataSource references for serving static assets.\n\n**Isolated Implementation for Minimal Fork Strategy**: Place all AI browser code in dedicated chrome/browser/ui/webui/ai_browser/ subdirectory to avoid core Chromium file modifications. Use feature flags with base::FeatureList::IsEnabled(kAIBrowserWebUI) for conditional compilation. Implement proper ifdef guards around protocol registration to maintain 99% Chromium functionality preservation requirement.\n\n**Message Handler Integration**: Add web_ui->AddMessageHandler(std::make_unique<AiBrowserMessageHandler>()) in the WebUIController constructor to enable JavaScript-C++ communication for agent monitoring and configuration interfaces. This supports the real-time agent status visualization and configuration persistence features outlined in related tasks.\n</info added on 2025-09-18T14:16:56.119Z>",
+        "testStrategy": "Verify chrome://ai-browser/ loads without crashing. Test that all existing Chromium functionality remains intact. Validate build system produces working binaries on target platforms.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "deferred",
         "subtasks": [
           {
             "id": 1,
-            "title": "Setup Git Subtree Strategy for Chromium Fork",
-            "description": "Configure git subtree commands and workflow for managing Chromium repository as a subtree to reduce repository size",
+            "title": "Fork and Baseline Build Setup",
+            "description": "Create true fork with git subtree strategy and establish clean baseline build.",
             "dependencies": [],
-            "details": "Initialize git repository, configure git subtree remote for Chromium upstream, create subtree pull/push scripts, document subtree workflow for team collaboration",
+            "details": "1) Clone upstream Chromium (e.g. chromium/src) and add remote for upstream sync. 2) Initialize fork repository; add Chromium as subtree (document command: git subtree add --prefix=chromium https://chromium.googlesource.com/chromium/src main --squash). 3) Configure .gclient or fetch deps via build/install-build-deps.sh. 4) Generate GN args (e.g. is_debug=true symbol_level=1 blink_symbol_level=0 use_sysroot=true enable_nacl=false is_component_build=false). 5) Build reference target (autoninja -C out/Default chrome) and run smoke (chrome --version, simple navigation). 6) Tag baseline (git tag fork-baseline). 7) Document upstream sync procedure (git subtree pull ...). 8) Verify no functional regressions before modifications.\n<info added on 2025-09-18T13:58:31.707Z>\nBased on the research findings, updated cloning strategy: Use shallow clone (git clone --depth 1 --branch main) to reduce download from ~200GB full repository to ~15-25GB for main branch only. Full Chromium repository contains 1,638,488 commits across 35,725 tags with massive binary assets. The git subtree strategy remains valid with shallow clone approach, enabling faster baseline establishment while preserving all current source code needed for fork development.\n</info added on 2025-09-18T13:58:31.707Z>\n<info added on 2025-09-18T15:13:23.673Z>\nEnhanced approach with shallow clone optimization: Use git clone --depth 1 --no-single-branch to reduce repository size from 20GB to 2-3GB. Implement sparse checkout targeting WebUI components to maintain ~5GB working directory. Configure depot_tools with gclient sync --no-history --shallow --no-hooks for minimal dependencies. Alternative Content Shell development path available for faster iteration cycles. Build optimization includes component builds (is_component_build = true), ccache integration (CCACHE_MAXSIZE=20G), and platform-specific targeting. Docker containerization recommended for consistent cross-platform builds with IDE exclusion of out/, third_party/, .git/ directories.\n</info added on 2025-09-18T15:13:23.673Z>\n<info added on 2025-09-19T00:37:13.538Z>\nIMPLEMENTATION PIVOT: The direct Chromium clone/subtree approach is abandoned due to persistent network failures (RPC failed, curl 56) and prohibitive download times. The new strategy is to use Electron as the Chromium-based browser foundation. The `chrome://ai-browser/` protocol will be implemented using Electron's `protocol.registerHttpProtocol`, bridging to a local FastAPI service on `localhost:3456`. This change unblocks development by avoiding the massive repository download while preserving full WebUI capabilities and enabling a faster development cycle. A minimal Chromium Content Shell build will be used as a fallback if Electron proves insufficient. Proceeding immediately with the Electron-based implementation.\n</info added on 2025-09-19T00:37:13.538Z>",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 2,
-            "title": "Install Cross-Platform Development Dependencies",
-            "description": "Install and configure Python 3.9+, Rust 1.70+, Node.js 18+ across Windows, macOS, and Linux platforms",
+            "title": "Implement Minimal chrome://ai-browser WebUI",
+            "description": "Add WebUI controller, data source, resources, and registration for chrome://ai-browser/.",
             "dependencies": [
               "1.1"
             ],
-            "details": "Setup package managers (brew, chocolatey, apt), install language runtimes with specific versions, configure PATH variables, verify installations with version checks",
+            "details": "1) Create directory chromium/chrome/browser/ui/webui/ai_browser/. 2) Add AiBrowserUI class (inherits content::WebUIController) and factory function. 3) Implement CreateDataSource adding placeholder index.html, favicon, and basic JS (resource ids via grit). 4) Update chrome/browser/ui/webui/chrome_web_ui_controller_factory.* to route host ai-browser to AiBrowserUI. 5) Add BUILD.gn with sources, deps on //content/public/browser and //ui/resources. 6) Update resources grd (e.g. chrome/browser/resources/ai_browser/). 7) Add ai_browser_url_constants.* defining kChromeUIAiBrowserHost. 8) Ensure scheme handled without privileged bindings beyond essentials. 9) Build all platforms targeted (at least Linux desktop first). 10) Launch chrome and manually verify chrome://ai-browser loads stub page.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 3,
-            "title": "Configure Chromium Build Tools and Depot Tools",
-            "description": "Setup Chromium's depot_tools and configure build environment with GN and Ninja build systems",
+            "title": "Integration, Validation, and Upstream Sync Procedure",
+            "description": "Add tests, validation steps, and sync/maintenance guidelines ensuring 99% functionality intact.",
             "dependencies": [
+              "1.1",
               "1.2"
             ],
-            "details": "Clone depot_tools, configure PATH for gclient/gn/ninja, run gclient sync, setup build configurations for debug/release modes, verify depot_tools functionality",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 4,
-            "title": "Setup Platform-Specific Build Dependencies",
-            "description": "Install platform-specific compilers, SDKs, and build tools required for Chromium compilation",
-            "dependencies": [
-              "1.3"
-            ],
-            "details": "Windows: Visual Studio 2022, Windows SDK; macOS: Xcode, macOS SDK; Linux: GCC/Clang, build-essential packages, configure compiler flags and build targets",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 5,
-            "title": "Create AI Integration Layer Directory Structure",
-            "description": "Establish project directory structure with separate folders for AI integration components and custom Chromium modifications",
-            "dependencies": [
-              "1.1"
-            ],
-            "details": "Create directories: /ai-integration, /custom-chromium, /build-scripts, /ci-configs, setup .gitignore patterns, establish coding standards and file organization",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 6,
-            "title": "Implement Initial Chromium Build Configuration",
-            "description": "Configure GN build files and create initial build targets optimized for development and CI builds",
-            "dependencies": [
-              "1.4",
-              "1.5"
-            ],
-            "details": "Create args.gn files for each platform, configure component builds, disable unnecessary features for faster builds, setup symbol_level and optimization flags",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 7,
-            "title": "Setup GitHub Actions CI/CD Pipeline Foundation",
-            "description": "Create GitHub Actions workflows for automated building and testing across multiple platforms",
-            "dependencies": [
-              "1.6"
-            ],
-            "details": "Create .github/workflows directory, configure platform-specific build matrices, setup caching for depot_tools and build artifacts, configure parallel build jobs",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 8,
-            "title": "Implement Build Time Optimization Scripts",
-            "description": "Create build scripts and optimizations targeting sub-30 minute CI build times through caching and parallelization",
-            "dependencies": [
-              "1.7"
-            ],
-            "details": "Implement ccache/sccache integration, create incremental build scripts, optimize GN args for CI builds, setup artifact caching strategies, benchmark build performance",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 9,
-            "title": "Configure Cross-Platform Build Verification",
-            "description": "Setup automated build verification and testing across Windows, macOS, and Linux platforms",
-            "dependencies": [
-              "1.8"
-            ],
-            "details": "Create platform-specific test runners, implement build artifact validation, setup smoke tests for basic Chromium functionality, configure build status reporting",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 10,
-            "title": "Implement Git Subtree Automation Scripts",
-            "description": "Create automation scripts for git subtree operations including upstream sync and conflict resolution",
-            "dependencies": [
-              "1.1"
-            ],
-            "details": "Build scripts for subtree pull/push operations, implement conflict detection and resolution helpers, create upstream sync scheduling, document subtree maintenance procedures",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 11,
-            "title": "Setup Development Environment Documentation",
-            "description": "Create comprehensive documentation for development environment setup and build procedures",
-            "dependencies": [
-              "1.9",
-              "1.10"
-            ],
-            "details": "Document platform-specific setup steps, create troubleshooting guides, establish development workflow documentation, create quick-start guides for new developers",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 12,
-            "title": "Validate Complete Build System Integration",
-            "description": "Perform end-to-end validation of the complete build system across all platforms and CI/CD pipeline",
-            "dependencies": [
-              "1.11"
-            ],
-            "details": "Execute full builds on all platforms, validate CI/CD pipeline functionality, perform performance benchmarks against 30-minute target, create build system health checks",
+            "details": "1) Add browser test (e.g. ai_browser_ui_browsertest.cc) navigating to chrome://ai-browser and asserting title/resource load. 2) Add simple WebUI HTML JS lint via existing PRESUBMIT. 3) Run core test shards (content_browsertests subset) to confirm no regressions. 4) Add performance smoke (page cycler or loading test) pre/post change diff negligible. 5) Document rollback (git revert AiBrowserUI commit). 6) Provide sync script updating subtree then re-applying minimal patch (git format-patch). 7) Add README_FORK.md covering subtree workflow, patch isolation, test commands. 8) Create CI config to build out/Default + run the new test. 9) Confirm no added sandbox or permission expansions. 10) Tag version ai-browser-v0 after validation.",
             "status": "pending",
             "testStrategy": ""
           }
@@ -148,99 +48,64 @@
       {
         "id": 2,
         "title": "Implement FastAPI Service Foundation",
-        "description": "Create FastAPI API service with health endpoints, CORS configuration, and basic routing structure for localhost:3456",
-        "details": "1. Initialize FastAPI application with proper CORS middleware\n2. Implement health monitoring endpoint (/health) with system status\n3. Setup basic routing structure for /v1/messages, /config, /gaia/benchmark\n4. Configure async request handling for AI API compatibility\n5. Implement request logging and error handling middleware\n6. Setup development server with hot reload capabilities\n7. Target <100ms p95 API latency and <500MB memory usage per process",
-        "testStrategy": "Unit tests for all endpoints, performance tests for latency requirements, memory usage profiling, CORS functionality validation",
+        "description": "Create FastAPI service with health endpoints, CORS configuration, and basic server infrastructure",
+        "details": "Initialize FastAPI application with uvicorn server on localhost:3456. Implement /health endpoint for system status monitoring. Configure CORS for WebUI integration. Set up basic error handling and logging. Create project structure with proper module organization for agents, models, and API endpoints.\n<info added on 2025-09-18T13:54:48.542Z>\nBased on the research session findings, enhanced FastAPI implementation should include structured JSON logging via structlog for agent trace correlation, improved CORS configuration to handle chrome:// protocol origins (including \"null\" and \"chrome://ai-browser\" in allowed origins list), and WebSocket support at /stream endpoint for real-time agent communication. Add token bucket rate limiting implementation with API key-based authentication using x-api-key headers. Implement Server-Sent Events capability for progressive benchmark updates. Configure development mode detection to conditionally serve React assets from localhost during development while supporting embedded resource serving for production builds. Add request ID middleware using UUID generation for trace correlation across agent communications. Ensure error handlers include trace IDs for debugging and implement graceful shutdown logging for proper service lifecycle management.\n</info added on 2025-09-18T13:54:48.542Z>\n<info added on 2025-09-18T14:18:54.910Z>\nBased on the research findings, implement the application factory pattern with create_app() function that separates configuration from instantiation to enable different environments for development, testing, and production. Enhance health endpoints to include multi-level system status monitoring with services dictionary tracking database, acp_runtime, and message_queue status, plus agents array for swarm monitoring that aligns with Task 10 agent monitoring requirements. Update CORS configuration to explicitly support chrome-extension://* origins and handle Chromium's internal protocols for seamless WebUI integration. Integrate structlog with contextvars for request_id and agent_id correlation tracking across agent boundaries, essential for Task 3 ACP message routing and Task 4 agent communication debugging. Implement comprehensive error handling middleware that preserves agent context and provides meaningful responses with request IDs for the API interception service integration. Configure uvicorn with proper worker management for agent communication and add dependency injection framework using FastAPI Depends to support the agent swarm architecture and future ACP runtime integration from Task 4. Structure the server configuration to support both development reload capabilities and production deployment requirements for the multi-agent swarm functionality.\n</info added on 2025-09-18T14:18:54.910Z>",
+        "testStrategy": "Verify FastAPI service starts without errors. Test /health endpoint returns 200 status. Validate CORS configuration allows WebUI requests. Check service handles basic error scenarios gracefully.",
         "priority": "high",
-        "dependencies": [
-          1
-        ],
-        "status": "pending",
+        "dependencies": [],
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
-            "title": "Initialize FastAPI Application with CORS Middleware",
-            "description": "Set up the core FastAPI application instance with proper CORS configuration for chrome:// protocol support and localhost:3456",
+            "title": "Project Structure Scaffolding",
+            "description": "Create base directory layout and module placeholders for FastAPI service.",
             "dependencies": [],
-            "details": "Create FastAPI app instance, configure CORSMiddleware with allow_origins for chrome-extension://* and localhost, set allow_credentials=True, allow_methods=['*'], allow_headers=['*']. Include uvloop integration for performance optimization.",
+            "details": "Create directories: app/, app/api/, app/core/, app/models/, app/agents/, app/utils/. Add __init__.py files. Add placeholder files: app/main.py, app/api/__init__.py, app/api/health.py, app/core/config.py, app/core/logging.py, app/core/errors.py. Add pyproject.toml or requirements.txt with fastapi, uvicorn[standard], python-dotenv. Ensure relative imports resolve.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 2,
-            "title": "Implement Health Monitoring Endpoint",
-            "description": "Create /health endpoint with comprehensive system status monitoring including memory usage and response time metrics",
+            "title": "Application Initialization & Server Startup",
+            "description": "Implement FastAPI app factory and uvicorn entrypoint on localhost:3456.",
             "dependencies": [
               "2.1"
             ],
-            "details": "Implement GET /health endpoint returning JSON with status, timestamp, memory_usage_mb, uptime, and system health indicators. Include async implementation for non-blocking health checks.",
+            "details": "In app/core/config.py define Settings (env loading, CORS origins list placeholder). Implement get_settings() with lru_cache. In app/main.py create create_app() that instantiates FastAPI with title, version, lifespan handler. Add run script: if __name__ == '__main__': uvicorn.run('app.main:app', host='127.0.0.1', port=3456, reload=True). Expose app = create_app().",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 3,
-            "title": "Setup Basic Routing Structure",
-            "description": "Create foundational routing structure for /v1/messages, /config, and /gaia/benchmark endpoints with placeholder implementations",
+            "title": "Health Endpoint Implementation",
+            "description": "Add /health endpoint returning service status payload.",
             "dependencies": [
-              "2.1"
+              "2.2"
             ],
-            "details": "Define router structure using APIRouter, create route handlers with proper async signatures, implement basic request/response models using Pydantic, ensure OpenAPI documentation generation.",
+            "details": "In app/api/health.py define router with GET /health returning JSON: status=ok, uptime (computed from startup time), timestamp, version from settings, dependencies check placeholder. Include simple dependency check function stub. Include router in create_app() via app.include_router(). Ensure 200 response model or dict typing.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 4,
-            "title": "Configure Async Request Handling",
-            "description": "Implement async request handling patterns optimized for AI API compatibility and concurrent request processing",
+            "title": "CORS & Middleware Configuration",
+            "description": "Configure CORS and common middlewares for WebUI integration.",
             "dependencies": [
-              "2.3"
+              "2.2"
             ],
-            "details": "Setup async/await patterns for all endpoints, implement connection pooling for external API calls, configure asyncio event loop optimization, add request queuing for load management.",
+            "details": "In create_app() add CORSMiddleware using settings.allowed_origins (fallback ['http://localhost:3000']). Allow credentials, methods ['*'], headers ['*']. Add middleware for request ID (generate UUID in state), and timing (process_time header). Prepare placeholder for future auth middleware but disabled by default.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 5,
-            "title": "Implement Request Logging and Error Handling Middleware",
-            "description": "Create comprehensive logging and error handling middleware for request tracking and graceful error responses",
+            "title": "Logging & Error Handling",
+            "description": "Implement structured logging and global exception handlers.",
             "dependencies": [
-              "2.1"
+              "2.2",
+              "2.4"
             ],
-            "details": "Implement custom middleware for request/response logging, structured error handling with proper HTTP status codes, request ID generation for tracing, performance metrics collection per request.",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 6,
-            "title": "Setup Development Server Configuration",
-            "description": "Configure uvicorn development server with hot reload capabilities and optimal settings for localhost:3456",
-            "dependencies": [
-              "2.5"
-            ],
-            "details": "Configure uvicorn server with reload=True for development, set host='localhost', port=3456, implement graceful shutdown handling, add development vs production configuration management.",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 7,
-            "title": "Implement Performance Optimization Middleware",
-            "description": "Add GZip compression and performance monitoring middleware to achieve <100ms p95 latency target",
-            "dependencies": [
-              "2.5"
-            ],
-            "details": "Implement GzipMiddleware for response compression, add request timing middleware for latency tracking, implement memory usage monitoring, configure response caching headers for static content.",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 8,
-            "title": "Validate Performance Requirements",
-            "description": "Test and validate that the service meets <100ms p95 API latency and <500MB memory usage requirements",
-            "dependencies": [
-              "2.6",
-              "2.7"
-            ],
-            "details": "Implement performance testing suite, load testing with concurrent requests, memory profiling during operation, latency measurement and reporting, optimization based on performance metrics.",
+            "details": "In app/core/logging.py configure logging.basicConfig with JSON formatter (or dict with %(asctime)s %(levelname)s %(name)s message). Add get_logger helper. In app/core/errors.py define custom ServiceError(base Exception) with code & message. Register handlers in create_app(): HTTPException -> JSON {error, detail}; RequestValidationError -> 422 with field errors; generic Exception -> 500 with trace id (request.state.request_id). Add startup log and graceful shutdown log. Ensure logs include path, method, status, duration.",
             "status": "pending",
             "testStrategy": ""
           }
@@ -248,113 +113,104 @@
       },
       {
         "id": 3,
-        "title": "Design and Implement ACP Message Structures",
-        "description": "Create IBM ACP-compatible message structures and base agent classes for agent communication protocol",
-        "details": "1. Define ACPMessage class with IBM ACP protocol compliance\n2. Implement AnthropicRequest/Response compatibility layer\n3. Create GAIAMetrics data model for performance tracking\n4. Design ConfigurationState model for provider settings\n5. Implement base Agent class with communication interface\n6. Create message serialization/deserialization utilities\n7. Add validation and error handling for message formats",
-        "testStrategy": "Schema validation tests, message serialization round-trip tests, ACP protocol compliance verification, data model integrity checks",
+        "title": "Define ACP Message Structures and Base Agent Classes",
+        "description": "Implement IBM ACP-compatible message structures and foundational agent classes",
+        "details": "Create ACPMessage data model with sender, receiver, content, message_type, and timestamp fields. Implement base Agent class with process_message, send_message, and handle_request methods. Define AgentType enum for different agent specializations. Create message routing infrastructure compatible with IBM ACP protocol specifications.\n<info added on 2025-09-18T13:59:33.677Z>\nBased on the comprehensive research findings, here are enhanced implementation details for IBM ACP message structures and agent communication patterns:\n\n**Enhanced ACP Message Model Design:**\nThe ACPMessage should include these validated fields based on IBM ACP protocol research: message_id (UUID for unique identification), sender/receiver (agent identifiers), content (structured payload), message_type (enum supporting REQUEST/RESPONSE/EVENT/ERROR/CONTROL), timestamp (UTC ISO-8601 format), correlation_id (for request-response tracking), metadata (extensible dict for protocol extensions), and protocol_version (for future compatibility). The model should enforce immutability where appropriate and include strict typing with validation.\n\n**Agent Base Class Architecture:**\nThe BaseAgent class should implement these core methods: process_message(msg) for incoming message handling, send_message(target, content, type, metadata) for outbound communication, handle_request(request) for synchronous request processing. Include agent_id, agent_type properties, inbox message queue for async processing, logging hooks for debugging, capability registry stub for service discovery, and integration with the serialization validation layer.\n\n**Message Routing Infrastructure:**\nImplement InMemoryRouter with register_agent/unregister_agent methods for agent lifecycle management, route(message) for message dispatch with error handling, support for direct addressing and optional broadcast capabilities, correlation tracking for request-response patterns, basic async queue handling with configurable timeouts, and error propagation semantics that return structured error messages to senders when routing fails.\n\n**Protocol Compliance Framework:**\nAdd protocol constants including version identifiers, standard message types, and error codes. Implement compliance validation checks for mandatory headers, version negotiation capabilities, and structured error message construction. Provide extensibility hooks for future runtime integration with distributed messaging systems while maintaining backward compatibility.\n\n**Serialization and Validation Layer:**\nImplement robust JSON serialization with to_json/from_json methods including strict field validation, enum constraint checking, timestamp format validation, and structured error codes for validation failures. Design for extensibility to support additional message types and protocols without breaking existing implementations.\n\n**Testing Strategy Enhancement:**\nInclude comprehensive test coverage for model instantiation with valid/invalid data, enum constraint validation, serialization round-trip equality testing, validation failure scenarios with proper error messages, BaseAgent method override patterns, message routing between mock agents with latency measurement, correlation ID handling for request-response cycles, protocol compliance validation, and edge cases like unknown message types and invalid receiver addresses.\n</info added on 2025-09-18T13:59:33.677Z>\n<info added on 2025-09-18T14:20:23.693Z>\n**GAIA-Specific Agent Communication Patterns:**\nImplement specialized message content structures for GAIA benchmark requirements. Planning Agent messages should include content.gaia_complexity_level (1, 2, or 3), content.reasoning_requirements, and content.expected_response_format fields. Level 1, 2, and 3 reasoning agents must include content.confidence_score and content.reasoning_trace in response messages to enable Planning Agent routing decisions.\n\n**Performance-Optimized Message Queue System:**\nIntegrate asyncio queues within FastAPI service architecture to support <100ms p95 latency requirement for Level 1 tasks. Implement non-blocking message processing with priority queuing based on GAIA complexity levels. Add message batching capabilities for Level 2 and Level 3 agents handling multi-step reasoning tasks.\n\n**Enhanced Message Model with GAIA Extensions:**\nExtend ACPMessage with priority field (1-10 scale) and ttl (time-to-live) field for timeout management. Add MessageType.HEARTBEAT for agent health monitoring integration with FastAPI /health endpoint. Include content.api_compatibility_layer metadata for Anthropic API translation in API Interceptor agent.\n\n**Production-Ready Error Handling Framework:**\nImplement comprehensive error codes in message content including AGENT_UNRESPONSIVE, ROUTING_FAILURE, VALIDATION_ERROR, and GAIA_COMPLEXITY_MISMATCH. Add circuit breaker pattern for automatic failure detection and recovery of unresponsive agents. Include structured error reporting for debugging agent interactions during GAIA benchmark execution.\n\n**Security and Authentication Layer:**\nDesign message signing capabilities framework for production deployments (deferred for initial development). Add agent authentication tokens in message headers for secure agent-to-agent communication. Implement message integrity validation to prevent tampering during agent swarm coordination.\n</info added on 2025-09-18T14:20:23.693Z>",
+        "testStrategy": "Unit tests for ACPMessage serialization/deserialization. Test base Agent class instantiation and method calls. Verify message routing between mock agents works correctly.",
         "priority": "high",
-        "dependencies": [
-          2
-        ],
+        "dependencies": [],
         "status": "pending",
         "subtasks": [
           {
             "id": 1,
-            "title": "Analyze IBM ACP Protocol Specification",
-            "description": "Research and analyze IBM Agent Communication Protocol specification to understand message formats, performatives, and communication patterns",
+            "title": "Design ACPMessage and AgentType Models",
+            "description": "Define ACPMessage data model and AgentType enum per initial requirements.",
             "dependencies": [],
-            "details": "Study IBM ACP documentation, identify required message fields, understand performative types (INFORM, REQUEST, AGREE, etc.), analyze conversation management patterns, and document protocol requirements for implementation",
+            "details": "Specify fields: message_id (UUID), sender, receiver, content, message_type (enum/string), timestamp (UTC), correlation_id (optional), metadata (dict), protocol_version. Define AgentType enum (e.g., BASE, LEVEL1, LEVEL2, LEVEL3, SYSTEM). Include immutability where appropriate and clear typing.\n<info added on 2025-09-18T13:57:56.722Z>\nThe user request contains research findings about Chromium repository size and cloning strategies, but this information is not relevant to the current subtask \"Design ACPMessage and AgentType Models\" which is focused on defining message structures and agent types for an ACP (Agent Communication Protocol) system.\n\nThe research about Chromium repository sizes, cloning strategies, and repository statistics appears to be related to Task 1 (Setup Chromium Fork and WebUI Registration) rather than the current subtask 3.1 which deals with message structure design.\n\nSince the user request doesn't contain any information relevant to designing ACPMessage models, AgentType enums, or message serialization/validation concerns, there is no appropriate content to add to this subtask's details.\n</info added on 2025-09-18T13:57:56.722Z>",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 2,
-            "title": "Design ACPMessage Base Class Structure",
-            "description": "Create the core ACPMessage dataclass with all required IBM ACP protocol fields and methods",
+            "title": "Implement Serialization and Validation Layer",
+            "description": "Add JSON (and optional binary/future) serialization plus schema validation for ACPMessage.",
             "dependencies": [
               "3.1"
             ],
-            "details": "Define ACPMessage dataclass with fields like sender, receiver, performative, content, conversation_id, reply_with, in_reply_to, language, encoding, ontology, and protocol version. Include type hints and documentation",
+            "details": "Implement to_json/from_json with strict validation (mandatory fields, enum checks, timestamp ISO-8601). Add validation errors with structured codes. Plan extensibility for additional message types without breaking compatibility.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 3,
-            "title": "Implement ACPPerformative Enumeration",
-            "description": "Create enumeration class for all IBM ACP performative types and message classification",
+            "title": "Implement BaseAgent Class",
+            "description": "Create abstract BaseAgent with core lifecycle and message handling hooks.",
             "dependencies": [
-              "3.1"
+              "3.1",
+              "3.2"
             ],
-            "details": "Define ACPPerformative enum with all standard IBM ACP performatives including INFORM, REQUEST, AGREE, REFUSE, CONFIRM, DISCONFIRM, QUERY_IF, QUERY_REF, CFP, PROPOSE, ACCEPT_PROPOSAL, REJECT_PROPOSAL, and custom extensions",
+            "details": "Methods: process_message(message), send_message(target, content, message_type, metadata), handle_request(request). Include inbox queue, logging hooks, agent_id, agent_type, capability registry stub, and validation integration using serialization layer.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 4,
-            "title": "Create Anthropic API Compatibility Layer",
-            "description": "Implement request/response transformation between Anthropic API format and ACP message structure",
+            "title": "Build Message Routing and Dispatcher",
+            "description": "Implement intra-process routing abstraction compatible with IBM ACP patterns.",
             "dependencies": [
+              "3.1",
               "3.2",
               "3.3"
             ],
-            "details": "Build AnthropicRequest and AnthropicResponse classes that can convert to/from ACPMessage format. Handle message content transformation, metadata mapping, and API parameter conversion while maintaining ACP protocol compliance",
+            "details": "Create Router/Dispatcher: register_agent, unregister_agent, route(message). Support direct addressing, broadcast (optional), and correlation for request/response. Add basic async queue handling and error propagation semantics.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 5,
-            "title": "Implement GAIAMetrics Data Model",
-            "description": "Design and implement data model for tracking GAIA benchmark performance metrics and agent statistics",
-            "dependencies": [],
-            "details": "Create GAIAMetrics dataclass with fields for accuracy scores, response times, token usage, complexity levels, success rates, error counts, and benchmark-specific metrics. Include methods for metric aggregation and reporting",
+            "title": "Add IBM ACP Protocol Compliance Layer",
+            "description": "Map internal structures to IBM ACP protocol rules and extend message types.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.4"
+            ],
+            "details": "Define protocol constants (version, standard message types, error codes). Implement compliance checks: mandatory headers, version negotiation stub, error message construction. Provide extensibility hooks for future runtime integration.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 6,
-            "title": "Design ConfigurationState Model",
-            "description": "Create configuration state management model for AI provider settings and agent parameters",
-            "dependencies": [],
-            "details": "Implement ConfigurationState dataclass with provider configurations, API keys, model settings, agent parameters, routing rules, and system preferences. Include validation methods and configuration persistence support",
+            "title": "Create Comprehensive Unit Tests",
+            "description": "Test models, serialization, base agent behaviors, routing, and protocol compliance.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.3",
+              "3.4",
+              "3.5"
+            ],
+            "details": "Tests: model instantiation, enum constraints, serialization round-trip, validation failures, BaseAgent override patterns, routing between mock agents, correlation handling, protocol compliance errors, coverage of edge cases (unknown message_type, invalid receiver).",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 7,
-            "title": "Implement Base Agent Communication Interface",
-            "description": "Create abstract base Agent class with ACP message handling and communication methods",
-            "dependencies": [
-              "3.2",
-              "3.4"
-            ],
-            "details": "Design abstract Agent base class with methods for send_message, receive_message, handle_request, process_response, and conversation management. Include agent identity, capabilities registration, and lifecycle management",
+            "title": "Implement IBM ACP Protocol Compliance Validation",
+            "description": "Create validation framework to ensure message structures and agent behavior comply with IBM ACP protocol specifications",
+            "dependencies": [],
+            "details": "Implement ACPValidator class with methods to validate message format compliance, protocol version compatibility, and agent behavior conformance. Create validation rules for message structure, field types, and required headers. Add compliance testing framework with test cases covering IBM ACP specification requirements. Include error reporting for non-compliant messages and agents.",
             "status": "pending",
             "testStrategy": ""
           },
           {
             "id": 8,
-            "title": "Build Message Serialization Utilities",
-            "description": "Implement serialization and deserialization utilities for ACP messages with multiple format support",
+            "title": "Develop Comprehensive Agent Communication Testing Suite",
+            "description": "Create extensive test suite for validating agent communication patterns and message routing functionality",
             "dependencies": [
-              "3.2",
-              "3.3",
-              "3.5",
-              "3.6"
+              "3.7"
             ],
-            "details": "Create utilities for JSON, XML, and binary serialization of ACP messages. Include schema validation, compression support, and format detection. Ensure round-trip integrity and performance optimization",
-            "status": "pending",
-            "testStrategy": ""
-          },
-          {
-            "id": 9,
-            "title": "Implement Message Validation and Error Handling",
-            "description": "Create comprehensive validation framework and error handling for ACP message formats and protocol compliance",
-            "dependencies": [
-              "3.2",
-              "3.3",
-              "3.8"
-            ],
-            "details": "Build message validation system with schema checking, protocol compliance verification, field validation, and comprehensive error handling. Include custom exceptions, validation reports, and automatic error recovery mechanisms",
+            "details": "Build comprehensive test framework covering unit tests for ACPMessage serialization/deserialization, integration tests for agent-to-agent communication, and end-to-end tests for message routing scenarios. Include performance tests for message throughput, reliability tests for error handling, and compatibility tests with different agent types. Add mock agent implementations for testing various communication patterns and edge cases.",
             "status": "pending",
             "testStrategy": ""
           }
@@ -362,99 +218,806 @@
       },
       {
         "id": 4,
-        "title": "Create Mock ACP Runtime for Development",
-        "description": "Implement basic ACP runtime system with mock agents for development and testing infrastructure",
-        "details": "1. Create ACP runtime engine for agent lifecycle management\n2. Implement agent registration and discovery mechanisms\n3. Build message routing system between agents\n4. Create mock agents for each GAIA complexity level\n5. Implement request queuing and response coordination\n6. Add basic monitoring and logging capabilities\n7. Setup development testing framework with mock responses",
-        "testStrategy": "Agent communication tests, message routing validation, mock agent response verification, runtime stability testing",
+        "title": "Implement Mock ACP Runtime",
+        "description": "Create simplified ACP runtime for development and testing of agent communication",
+        "details": "Build ACPRuntime class that manages agent registration, message routing, and communication orchestration. Implement agent discovery and health monitoring. Create message queue system for asynchronous agent communication. Add basic error handling and timeout management for agent interactions.\n<info added on 2025-09-18T14:22:00.795Z>\nBased on the research findings, the ACP Runtime implementation should adopt a hub-and-spoke architecture with the ACPRuntime class serving as the central coordinator. Key architectural enhancements include implementing a two-phase agent registration process with capability validation, supporting both pull-based registry queries and push-based event notifications for agent discovery. The message routing system should incorporate a multi-tier queue architecture with separate queues for high-priority system messages, agent-to-agent communication, and broadcast notifications, plus intelligent routing that considers agent load and capabilities with circuit breaker patterns for failure handling.\n\nHealth monitoring should implement adaptive heartbeat intervals (5-second for critical planning orchestrator, 15-second for reasoning agents) with comprehensive metrics including processing latency, resource utilization, error rates, and queue depths. The timeout strategy requires cascading timeouts: 100-500ms for acknowledgments, 1-30 seconds for GAIA task processing, and exponential backoff for agent responses. Error recovery should include automatic retry mechanisms, agent restart procedures, and fallback routing.\n\nThe graceful shutdown procedure should implement a four-phase process: preparation (stop new requests), drain (complete in-flight messages), cleanup (persist states and queues), and termination (force-stop unresponsive components). State persistence capabilities are essential to allow seamless runtime resumption after restart, particularly important for long-running GAIA benchmark evaluations. Integration points include FastAPI health endpoints for runtime monitoring, WebUI real-time updates, and transparent request queuing for the Anthropic API compatibility layer while maintaining API timeout and response format consistency.\n</info added on 2025-09-18T14:22:00.795Z>",
+        "testStrategy": "Test agent registration and discovery. Verify message routing between multiple agents. Validate timeout handling for unresponsive agents. Test runtime shutdown and cleanup procedures.",
         "priority": "medium",
         "dependencies": [
+          2,
           3
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Runtime Architecture & Skeleton",
+            "description": "Define core ACPRuntime structure and concurrency model.",
+            "dependencies": [],
+            "details": "Create ACPRuntime class with lifecycle methods (start, stop). Decide on asyncio event loop usage. Define internal registries: agents (dict), queues (per-agent asyncio.Queue), and monitoring state. Establish dataclasses or simple models: AgentInfo(id, capabilities, last_seen). Stub public APIs: register_agent, unregister_agent, send_message, broadcast, get_agent, list_agents.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Agent Registration & Discovery",
+            "description": "Implement secure agent registration, lookup, and discovery APIs.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Implement register_agent validating uniqueness, storing AgentInfo with timestamp. Add discovery functions: list_agents(filter_capability=None), get_agent(agent_id). Auto-update last_seen on interaction. Add simple capability index (dict capability -> set(agent_ids)). Include basic validation & exceptions (DuplicateAgentError, UnknownAgentError).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Asynchronous Message Queue & Routing",
+            "description": "Add per-agent queues and routing logic for direct and broadcast messages.",
+            "dependencies": [
+              "4.1",
+              "4.2"
+            ],
+            "details": "For each registered agent create asyncio.Queue(maxsize configurable). Implement send_message(from_id, to_id, payload, correlation_id, timeout=None). Implement broadcast(from_id, capability, payload). Add internal _route_message and message envelope: {from, to, ts, payload, correlation_id}. Provide receive API: await runtime.next_message(agent_id, timeout=None). Include basic backpressure handling (raise QueueFullError).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Health Monitoring & Heartbeats",
+            "description": "Track agent liveness and expose health status.",
+            "dependencies": [
+              "4.2",
+              "4.3"
+            ],
+            "details": "Add heartbeat(agent_id) API updating last_seen. Background task every N seconds scans agents; mark unhealthy if stale > threshold. Maintain health_state dict agent_id -> {'status': 'healthy'|'stale'|'absent', 'last_seen': ts}. Expose get_health(agent_id) and list_unhealthy(). Emit events/logs on status transitions.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Timeout & Error Handling Framework",
+            "description": "Introduce structured timeouts and robust exception model.",
+            "dependencies": [
+              "4.3",
+              "4.4"
+            ],
+            "details": "Wrap send/receive with asyncio.wait_for when timeout provided. Define custom exceptions: MessageTimeoutError, AgentUnhealthyError, RoutingError. On timeout mark destination as suspect (increment failure counter) and integrate with health logic. Add retry helper: await runtime.send_with_retry(..., retries, backoff). Centralize error logging with context (correlation_id).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Shutdown & Resource Cleanup",
+            "description": "Graceful runtime stop releasing resources.",
+            "dependencies": [
+              "4.2",
+              "4.3",
+              "4.4",
+              "4.5"
+            ],
+            "details": "Implement stop() to: signal background tasks, flush queues (optionally drain or discard), mark runtime state=stopped, prevent new registrations/messages. Cancel health monitor tasks safely (gather with return_exceptions). Provide await runtime.drain(agent_id) to consume remaining messages. Ensure idempotent stop calls.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Testing & Instrumentation",
+            "description": "Create unit & integration tests plus logging/metrics hooks.",
+            "dependencies": [
+              "4.2",
+              "4.3",
+              "4.4",
+              "4.5",
+              "4.6"
+            ],
+            "details": "Unit tests: registration uniqueness, discovery filters, queue routing, broadcast fan-out, heartbeat state transitions, timeout/error scenarios, shutdown idempotency. Integration test: 3+ agents exchanging correlated messages with induced delays. Add lightweight metrics counters (messages_sent, messages_received, timeouts, unhealthy_agents). Provide debug logging toggle.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 5,
-        "title": "Implement Planning Agent (ACP Orchestrator)",
-        "description": "Create planning agent that routes requests to appropriate specialized agents based on GAIA complexity analysis",
-        "details": "1. Implement request analysis for GAIA complexity classification\n2. Create routing logic for Level 1-3 specialized agents\n3. Build request decomposition for multi-step tasks\n4. Implement response aggregation and coordination\n5. Add fallback handling for agent failures\n6. Create performance monitoring and metrics collection\n7. Optimize for >90% overall GAIA accuracy target",
-        "testStrategy": "Request routing accuracy tests, complexity classification validation, response coordination testing, performance metrics verification",
-        "priority": "high",
+        "title": "Create Planning Agent (ACP Orchestrator)",
+        "description": "Implement planning agent that orchestrates request routing to specialized agents",
+        "details": "Develop PlanningAgent class extending base Agent. Implement request analysis to determine appropriate GAIA complexity level (1-3). Create routing logic to dispatch requests to specialized agents. Add response aggregation and coordination capabilities. Implement basic caching for common request patterns.\n<info added on 2025-09-18T14:23:26.780Z>\nBased on the research findings, the Planning Agent implementation should incorporate a sophisticated multi-stage request analysis pipeline with three distinct phases: preprocessing (request parsing and normalization), feature extraction (linguistic analysis and semantic understanding), and complexity classification using a 0.0-1.0 scoring system mapped to GAIA levels. The classification algorithm should use Level 1 (0.0-0.33) for simple information retrieval, Level 2 (0.34-0.67) for multi-step reasoning, and Level 3 (0.68-1.0) for complex multi-modal tasks. Implement hub-and-spoke coordination pattern where PlanningAgent serves as central coordinator through ACPRuntime, with support for both pipeline coordination (sequential processing with rollback mechanisms) and parallel processing coordination for independent sub-tasks. The caching strategy should include three layers: request-level caching with fingerprinting and time-based expiration, agent response caching with semantic similarity matching, and pattern-based caching with proactive cache warming. Integration points include exposing complexity metrics through WebUI monitoring (Task 10), leveraging GAIA benchmark infrastructure for validation (Task 11), extending ACPMessage structures with complexity scores, and implementing FastAPI-level caching for performance optimization. This approach ensures scalable workload distribution across specialized agents while maintaining high performance through intelligent routing and caching strategies.\n</info added on 2025-09-18T14:23:26.780Z>",
+        "testStrategy": "Test request classification for different GAIA complexity levels. Verify proper routing to appropriate specialized agents. Validate response aggregation from multiple agents. Test caching mechanism effectiveness.",
+        "priority": "medium",
         "dependencies": [
+          3,
           4
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design PlanningAgent Architecture",
+            "description": "Define class structure, interfaces, and message schemas",
+            "dependencies": [],
+            "details": "Create PlanningAgent class extending base Agent. Specify public methods: analyze_request, classify_complexity, route, aggregate_responses, coordinate, get_or_set_cache. Define data contracts for RequestEnvelope, RoutingDecision, AgentResponse, AggregatedResult. Align with ACPRuntime registration & message queue patterns. Document lifecycle (init, handle_message, shutdown) and logging strategy.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Request Analysis & Complexity Classification",
+            "description": "Build analysis pipeline producing GAIA level (1-3)",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement analyze_request extracting intent, task type, resource hints, temporal constraints. Add heuristic + rule + lightweight scoring (tokens, operators, multi-step indicators) to classify GAIA complexity. Provide pluggable strategy pattern for future ML model. Include confidence score & trace metadata. Add unit tests with synthetic request set covering levels 1-3 and edge cases.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Develop Routing Engine",
+            "description": "Map classified requests to specialized agents",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Implement route logic taking classification + capabilities registry to select target agent(s). Support single-target (simple) and multi-agent plan (complex). Add fallback ordering, timeout handling, cancellation tokens. Provide routing decision object with rationale. Add metrics: routing_latency_ms, selected_agent, fallback_count.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Build Response Aggregation & Coordination",
+            "description": "Combine multi-agent outputs and resolve conflicts",
+            "dependencies": [
+              "5.3"
+            ],
+            "details": "Implement aggregation pipeline: collect partial responses, validate schema, score confidence, perform conflict resolution (choose highest confidence or merge). Support iterative refinement loop (request clarification or secondary agent consult) with max iteration guard. Produce AggregatedResult with provenance map. Add unit tests simulating divergent agent outputs.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Caching Layer",
+            "description": "Add request/result caching for common patterns",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Create in-memory cache with normalized request key (lowercased, stripped, parameter hash). Store classification + aggregated response entries separately with TTL. Add cache policy (e.g., LRU + max size). Include metrics: cache_hits, cache_misses, eviction_count. Integrate into analyze_request (classification cache) and pre-route retrieval. Add tests for normalization collisions and TTL expiry.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Integrate & End-to-End Test Harness",
+            "description": "Wire components and validate full orchestration flow",
+            "dependencies": [
+              "5.1",
+              "5.2",
+              "5.3",
+              "5.4",
+              "5.5"
+            ],
+            "details": "Assemble PlanningAgent with runtime hooks. Implement scripted scenarios covering: simple L1 request, multi-agent complex request, cache hit path, fallback routing, timeout path. Capture metrics (overall_latency, agent_invocations, classification_accuracy). Add structured logs with correlation IDs. Provide evaluation report generator summarizing test runs.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 6,
-        "title": "Develop GAIA Level 1 Simple Reasoning Agent",
-        "description": "Create specialized agent for GAIA Level 1 tasks targeting >95% accuracy for quick reasoning queries",
-        "details": "1. Implement Level 1 agent with quick reasoning capabilities\n2. Optimize for simple factual queries and direct answers\n3. Build efficient caching mechanism for common queries\n4. Integrate with Anthropic API for reasoning tasks\n5. Implement response validation and confidence scoring\n6. Add performance monitoring specific to Level 1 metrics\n7. Target <2s response time for simple queries",
-        "testStrategy": "GAIA Level 1 benchmark testing, accuracy measurement against >95% target, response time validation, cache efficiency testing",
-        "priority": "high",
+        "title": "Implement Level 1 Simple Reasoning Agent",
+        "description": "Create specialized agent for GAIA Level 1 quick reasoning tasks targeting >95% accuracy",
+        "details": "Implement Level1Agent class optimized for simple reasoning tasks. Integrate with Anthropic API for language model capabilities. Implement prompt engineering optimized for Level 1 GAIA benchmark tasks. Add response validation and confidence scoring. Optimize for <100ms p95 latency target.\n<info added on 2025-09-18T14:24:55.754Z>\nLooking at the research content and the current task details, I need to extract the new, actionable information that should be appended to Task 6's implementation details. The research provides specific technical guidance that expands on the current high-level requirements.\n\nBased on the research findings, the Level1Agent should extend the base Agent class and use Claude 3 Haiku model for optimal latency-to-accuracy ratio. Implement async Anthropic client with httpx.AsyncClient using connection pooling (max_connections=100, max_keepalive_connections=20) and 5-second timeout. Create structured prompt template with task classification, response format enforcement, and explicit confidence scoring using format \"Answer: [response] | Confidence: [score]\". Implement regex-based response parsing with fallback mechanisms and content validation pipeline. Add intelligent caching using Redis or in-memory storage for common queries. Use lower max_tokens settings and maintain warm connections to avoid cold start penalties. Integrate with ACP Runtime's message routing and implement telemetry hooks for GAIA Benchmark Runner. Include circuit breaker pattern and exponential backoff with jitter for API rate limiting. Ensure compatibility with API Interception Service for transparent Anthropic API integration.\n</info added on 2025-09-18T14:24:55.754Z>",
+        "testStrategy": "Run subset of GAIA Level 1 benchmark tasks. Measure accuracy against >95% target. Validate API latency stays under 100ms p95. Test error handling for API failures.",
+        "priority": "medium",
         "dependencies": [
+          3,
           5
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Anthropic API Integration Layer",
+            "description": "Implement Level1Agent with efficient Anthropic API client supporting low-latency calls.",
+            "dependencies": [],
+            "details": "Create Level1Agent class skeleton. Implement async Anthropic client wrapper with connection reuse, streaming disabled, minimal request payload. Add timeout (e.g., 80ms) and retry (1 fast retry on transient errors). Expose invoke(prompt) returning raw model text plus token usage.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Level 1 Prompt Engineering",
+            "description": "Design concise prompt template optimized for GAIA Level 1 simple reasoning tasks.",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Create prompt builder producing deterministic structure: system role instructions (concise reasoning, no extra text), task framing, few canonical examples (<=2), user query. Add option flags for numeric vs categorical answers. Implement token budget guard (<256 tokens).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Response Parsing, Validation, Confidence Scoring",
+            "description": "Implement strict output parser with normalization, basic heuristics, and confidence scoring.",
+            "dependencies": [
+              "6.1",
+              "6.2"
+            ],
+            "details": "Parse model output extracting final answer via regex patterns. Normalize numbers, units, casing. Validate against expected simple answer formats (single word/number). Assign confidence using features: length penalty, pattern match, ambiguity flags. Return {answer, confidence, validation_errors}.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Latency & Resource Optimization",
+            "description": "Optimize for <100ms p95 end-to-end latency including prompt build, API call, parsing.",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3"
+            ],
+            "details": "Add micro-metrics timers around each stage. Implement in-memory LRU cache for identical recent prompts (TTL few seconds). Precompile regex patterns. Ensure no blocking I/O besides single API call. Add fast-path short-circuit if cached. Provide get_latency_stats().",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Accuracy Measurement & Mini Benchmark",
+            "description": "Create harness to run subset of GAIA Level 1 tasks and compute accuracy vs >95% target.",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3",
+              "6.4"
+            ],
+            "details": "Implement run_batch(tasks) producing per-item {gold, prediction, confidence, correct}. Compute accuracy, confidence distribution, failure taxonomy (parse_fail, incorrect, low_confidence). Expose report() JSON plus concise summary string. Integrate latency stats. Gate pass if accuracy>=0.95.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 7,
-        "title": "Build React WebUI for chrome://ai-browser/",
-        "description": "Create React-based WebUI interface for AI configuration, agent monitoring, and direct AI interaction",
-        "details": "1. Setup React application with TypeScript and modern tooling\n2. Implement chat interface for direct AI interaction\n3. Create agent status monitoring dashboard\n4. Build provider configuration management UI\n5. Add real-time performance metrics display\n6. Implement WebUI registration in Chromium fork\n7. Ensure zero disruption to normal browsing experience",
-        "testStrategy": "UI component testing, WebUI integration testing, real-time updates validation, cross-browser compatibility testing",
+        "title": "Build React WebUI with Basic Chat Interface",
+        "description": "Create React-based WebUI for chrome://ai-browser/ with basic chat functionality",
+        "details": "Initialize React application with TypeScript. Create chat interface components with message history, input field, and send functionality. Implement API client for FastAPI service communication. Add basic responsive design and accessibility features. Configure webpack build for chrome:// protocol integration.\n<info added on 2025-09-18T14:26:23.143Z>\nEnhanced implementation approach based on research findings: Use Vite for development with hybrid build system integrating into Chromium's GN build process. Implement Zustand for lightweight state management supporting multi-level agent communication and real-time status updates. Create component hierarchy with ChatContainer, MessageHistory with virtualization, MessageInput with typing indicators, AgentStatusIndicator for real-time agent health display, and ConfigurationPanel for provider settings. Integrate AIBrowserAPIClient with streaming support for AnthropicResponse models and GAIA benchmark integration endpoints. Implement WebUIController with proper chrome:// protocol security headers and CSP policies. Add virtual scrolling for message history performance, code splitting for reduced bundle size, and WebWorker integration for GAIA benchmark computations. Design responsive layout using CSS Grid/Flexbox with proper ARIA labels, keyboard navigation, and high contrast mode support for accessibility compliance within Chromium's constrained environment.\n</info added on 2025-09-18T14:26:23.143Z>",
+        "testStrategy": "Test chat interface renders correctly in chrome://ai-browser/. Verify message sending and receiving works. Test responsive design on different screen sizes. Validate accessibility compliance with basic WCAG guidelines.",
         "priority": "medium",
         "dependencies": [
-          6
+          1,
+          2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize React + TypeScript Project",
+            "description": "Set up React project with TypeScript and development tooling.",
+            "dependencies": [],
+            "details": "Tasks: (1) Initialize project (npm create vite@latest or custom setup) with TypeScript. (2) Add ESLint, Prettier, basic tsconfig path aliases. (3) Install dependencies: react, react-dom, axios (or fetch wrapper), testing libs (jest / vitest + RTL). (4) Configure Webpack (or Vite→Webpack migration if required) with entry, output, asset handling, source maps. (5) Add environment config for API base URL (localhost:3456). (6) Provide npm scripts: dev, build, test, lint. Acceptance: Project builds and serves a placeholder root component without errors.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement App Shell and Layout Structure",
+            "description": "Create root App component, layout containers, and basic theming.",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Tasks: (1) Create App root with header, main content region, and status/footer area. (2) Add ThemeProvider (CSS variables or styled-system). (3) Establish global styles: normalize, typography scale, color tokens (light/dark placeholders). (4) Define layout components: FlexContainer, Panel, VisuallyHidden helper. (5) Add basic focus ring and skip-to-content link. Acceptance: Layout renders with semantic landmarks (header, main, footer) and passes baseline lighthouse structure checks.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build Chat UI Components and State",
+            "description": "Create chat message list, input area, and local state management.",
+            "dependencies": [
+              "7.2"
+            ],
+            "details": "Components: (1) MessageList (virtualized if simple overflow). (2) MessageItem (role-based styling: user vs system/assistant). (3) ChatInput with multiline text area + send button + Enter handling. (4) ChatContainer orchestrating message state, pending state, error display. (5) Hook useChatState with addMessage, updateMessage, setStreaming. (6) Placeholder mock send function. Acceptance: User can type message, see it appended locally; mock response inserted after short timeout.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Integrate FastAPI Backend Communication",
+            "description": "Implement API client and wire real send/receive logic.",
+            "dependencies": [
+              "7.3"
+            ],
+            "details": "Tasks: (1) Create api/client module with base URL, timeout, JSON helper, error normalization. (2) Define TypeScript interfaces: ChatRequest, ChatResponse, Message. (3) Implement sendMessage function; support streaming if backend offers SSE or chunked responses (stub fallback). (4) Add loading + partial message update handling. (5) Error handling path with retry UI. (6) Replace mock logic in ChatContainer with real client. Acceptance: Messages post to FastAPI endpoint and show server responses; network errors surfaced to user.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Responsive Styling and Accessibility Enhancements",
+            "description": "Apply responsive layout and WCAG-focused accessibility improvements.",
+            "dependencies": [
+              "7.3"
+            ],
+            "details": "Tasks: (1) Mobile-first CSS: collapse side spacing, adaptive font sizes. (2) Ensure chat area scroll behavior consistent; auto-scroll on new assistant message with user override. (3) ARIA: role=list / listitem for messages, label input, announce streaming via aria-live=polite region. (4) High-contrast theme tokens; verify color contrast >= 4.5:1. (5) Keyboard: tab order, Enter vs Shift+Enter keys, focus management after send. (6) Basic screen reader smoke test script. Acceptance: Passes contrast checks, keyboard-only interaction complete, resizing 320px–1200px works.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "chrome:// Protocol Integration and Build Adaptation",
+            "description": "Adapt build output for chrome://ai-browser/ environment and validate loading.",
+            "dependencies": [
+              "7.1",
+              "7.4"
+            ],
+            "details": "Tasks: (1) Adjust Webpack publicPath and asset resolution for chrome:// scheme (no external CDN). (2) Inline critical CSS and defer non-critical bundles if required. (3) Ensure CSP compliance: avoid unsafe-inline; use hashed styles or CSS files. (4) Package output into expected directory structure for Chromium integration. (5) Smoke test inside chrome://ai-browser/ context: load app, send/receive messages. (6) Document integration steps and any protocol constraints (e.g., fetch limitations). Acceptance: App loads via chrome://ai-browser/ with functioning chat and no console errors.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 8,
         "title": "Implement API Interception Service",
-        "description": "Create API interception service with Anthropic compatibility endpoint for transparent AI tool integration",
-        "details": "1. Implement /v1/messages endpoint with Anthropic API compatibility\n2. Create request interception and routing to agent swarm\n3. Build response transformation for API compatibility\n4. Add authentication and rate limiting mechanisms\n5. Implement request caching and optimization\n6. Create transparent integration with existing AI workflows\n7. Ensure seamless operation with AI tools and applications",
-        "testStrategy": "API compatibility testing with existing tools, interception accuracy validation, response format verification, performance benchmarking",
-        "priority": "high",
+        "description": "Create Anthropic API compatibility layer for transparent integration with existing AI tools",
+        "details": "Implement /v1/messages endpoint with Anthropic API compatibility. Create AnthropicRequest/Response data models matching official API specification. Add request intercepting and routing through agent swarm. Implement authentication and rate limiting. Ensure transparent integration with existing AI workflows.\n<info added on 2025-09-18T14:06:28.915Z>\nBased on research into Chromium repository management, a shallow clone strategy is mandated for this task's development environment. The full repository (200-300GB) is prohibitive for rapid iteration. A shallow or sparse clone (15-25GB) significantly reduces setup and CI/CD times, enabling faster testing of the `/v1/messages` endpoint and the overall Anthropic API compatibility layer. This approach is critical for maintaining development velocity.\n</info added on 2025-09-18T14:06:28.915Z>\n<info added on 2025-09-18T14:27:52.108Z>\nBased on comprehensive API interception research, the service architecture should implement a transparent proxy layer with middleware pipeline pattern for authentication, rate limiting, request transformation, and routing. Core implementation should use FastAPI router module extending the base service with JWT-based authentication system supporting API key scoping and validation. The transformer pattern will convert Anthropic API requests to internal ACP messages, enabling intelligent routing to appropriate agents based on request characteristics while maintaining complete API compatibility. Rate limiting implementation should utilize token bucket algorithm with Redis backing for distributed rate limiting, supporting per-key quotas with burst handling and graceful degradation. Integration with ACP Runtime requires request correlation IDs for tracking through agent pipeline, asynchronous processing with timeout handling, and fallback mechanisms for agent unavailability. Request preprocessing should analyze incoming messages for optimal agent selection, leveraging multi-agent capabilities while preserving familiar Anthropic API interface for existing tools.\n</info added on 2025-09-18T14:27:52.108Z>",
+        "testStrategy": "Test API compatibility with Anthropic SDK. Verify request/response format matches official API. Test integration with existing AI tools and applications. Validate rate limiting and authentication mechanisms.",
+        "priority": "medium",
         "dependencies": [
-          7
+          2,
+          5,
+          6
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Anthropic API Data Models",
+            "description": "Create request/response Pydantic models matching Anthropic /v1/messages spec.",
+            "dependencies": [],
+            "details": "Implement AnthropicRequest, Message, ContentBlock, ToolUse, ToolResult, StopReason enums, AnthropicResponse models. Include validation (max tokens, model name, temperature ranges) and serialization parity with official spec. Add versioned module (anthropic/schema.py) and docstrings citing spec date. Provide factory helpers for streaming vs non-streaming responses.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement /v1/messages Endpoint",
+            "description": "Add FastAPI route for Anthropic-compatible messages endpoint.",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "Create POST /v1/messages using models. Support sync and streaming (Server-Sent Events or chunked transfer). Map incoming AnthropicRequest to internal agent invocation contract. Handle errors with Anthropic-compatible error format. Include logging (request id, model, latency). Return AnthropicResponse with proper stop_reason and usage tokens (placeholder counters initially).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Request Interception & Agent Routing",
+            "description": "Intercept Anthropic requests and route through agent swarm runtime.",
+            "dependencies": [
+              "8.2"
+            ],
+            "details": "Implement interception layer that transforms AnthropicRequest into internal agent message. Integrate with ACP runtime for agent discovery and selection. Support basic routing strategy (single primary reasoning agent). Add timeout handling, retries, and structured error propagation. Ensure transparent pass-through of user-provided metadata. Instrument with timing metrics.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Authentication Middleware",
+            "description": "Add API key based auth compatible with Anthropic-style headers.",
+            "dependencies": [
+              "8.2"
+            ],
+            "details": "Implement middleware reading x-api-key or Authorization header. Validate against in-memory or simple persistence store. Provide key status (active, revoked) and usage counters. Return Anthropic-compatible 401/403 error formats. Add key loader and helper CLI stub (optional). Ensure minimal overhead and clear audit logging (key id, request id).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Rate Limiting & Quotas",
+            "description": "Implement per-key rate limiting and basic quota tracking.",
+            "dependencies": [
+              "8.3",
+              "8.4"
+            ],
+            "details": "Token bucket or leaky bucket in-memory limiter with configurable RPS and burst. Track daily usage (requests, input/output tokens). Emit 429 with Anthropic-compatible error body. Integrate with auth context for key identity. Include metrics (current_tokens, resets_at). Prepare abstraction for future Redis backend. Add unit tests for edge cases and concurrency.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Compatibility & Integration Testing",
+            "description": "Validate API behavior against Anthropic SDK and existing tools.",
+            "dependencies": [
+              "8.3",
+              "8.4",
+              "8.5"
+            ],
+            "details": "Create test suite invoking /v1/messages via Anthropic Python SDK pointed to local base URL. Verify request/response parity (fields, stop_reason, usage). Test streaming sequence ordering. Validate auth failures, rate limit responses, malformed payloads. Include golden JSON fixtures. Add performance smoke test (p95 latency baseline) and routing correctness checks. Produce summary report artifact.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 9,
-        "title": "Develop GAIA Level 2-3 Specialized Agents",
-        "description": "Create research coordinator (Level 2) and deep analyzer (Level 3) agents targeting >90% and >80% accuracy respectively",
-        "details": "1. Implement Level 2 research coordinator for multi-step research tasks\n2. Create Level 3 deep analyzer for complex analysis workflows\n3. Build advanced reasoning capabilities and tool integration\n4. Implement multi-agent coordination for complex queries\n5. Add specialized knowledge bases and retrieval systems\n6. Create advanced caching and response optimization\n7. Target >90% Level 2 and >80% Level 3 GAIA accuracy",
-        "testStrategy": "GAIA Level 2-3 benchmark testing, accuracy measurement against targets, multi-agent coordination validation, complex query handling verification",
+        "title": "Develop Level 2 and Level 3 Specialized Agents",
+        "description": "Implement Level 2 research coordinator and Level 3 deep analyzer agents for complex GAIA tasks",
+        "details": "Create Level2Agent for multi-step research tasks targeting >90% accuracy. Implement Level3Agent for complex analysis targeting >80% accuracy. Add web scraping capabilities, document analysis, and multi-source information synthesis. Implement advanced prompt engineering and chain-of-thought reasoning for complex problems.\n<info added on 2025-09-18T14:07:28.697Z>\nBased on an analysis of the Chromium repository, a shallow clone strategy is mandated for the development environment to manage the repository's large size (15-25GB shallow vs. 200-300GB full). This is essential for enabling the rapid development and testing cycles required for these complex agents. The recommended clone command is `git clone --depth=1 --single-branch --branch=main https://chromium.googlesource.com/chromium/src.git`.\n\nImplementation should leverage Chromium's existing architecture:\n- **Web Scraping & Document Analysis:** Utilize Chromium's robust Content Security Policy (CSP) handling, document/DOM parsing engines, and sophisticated network stack.\n- **Advanced Reasoning:** Integrate chain-of-thought modules with the V8 JavaScript engine and leverage browser automation capabilities for research coordination.\n- **Agent Coordination:** Adapt patterns from Chromium's Inter-Process Communication (IPC) system for messaging between agents.\n</info added on 2025-09-18T14:07:28.697Z>\n<info added on 2025-09-18T14:29:25.150Z>\nBased on comprehensive research into specialized agent architectures for GAIA tasks, the implementation should adopt a hierarchical orchestration pattern where Level 2 agents function as research coordinators and Level 3 agents serve as deep analyzers. Key architectural recommendations include:\n\n**Level 2 Research Coordinator Design:**\n- Implement task decomposition strategy with parallel sub-problem execution\n- Use chain-of-thought prompting with intermediate validation checkpoints\n- Integrate confidence scoring and cross-validation mechanisms to achieve >90% accuracy target\n- Maintain conversation state across multi-step reasoning operations\n- Leverage existing FastAPI /v1/messages endpoint for Anthropic API compatibility\n\n**Level 3 Deep Analyzer Implementation:**\n- Focus on multi-source information synthesis with knowledge graph construction\n- Implement document analysis engine supporting PDF, HTML, and structured data formats\n- Use sophisticated prompting techniques including self-reflection and iterative refinement\n- Build temporary knowledge graphs from gathered information for complex reasoning\n\n**Web Scraping Infrastructure:**\n- Implement robust scraping with playwright/selenium for dynamic content and requests/BeautifulSoup fallback\n- Include comprehensive rate limiting, robots.txt compliance, and error handling\n- Provide detailed scraping metrics for agent monitoring dashboard integration\n- Cache results to minimize redundant requests during benchmark execution\n\n**Advanced Prompt Engineering Strategy:**\n- Progressive prompting with chain-of-thought reasoning and explicit step breakdown\n- Self-verification prompts for accuracy improvement\n- Multi-perspective analysis with solution approach synthesis\n- Confidence calibration training for accurate self-assessment\n\n**Integration Points:**\n- Seamless integration with GAIA Benchmark Runner for specialized Level 2/3 endpoints\n- Real-time reasoning chain display in WebUI monitoring dashboard\n- Cross-platform compatibility with existing build system requirements\n- Incremental implementation approach starting with Level 2 coordinator before Level 3 development\n\nThe research indicates implementing agent capability testing within the existing framework, with benchmark subsets targeting specific reasoning capabilities for iterative performance improvement based on measurable accuracy metrics.\n</info added on 2025-09-18T14:29:25.150Z>",
+        "testStrategy": "Run GAIA Level 2 and Level 3 benchmark subsets. Measure accuracy against 90% and 80% targets respectively. Test multi-step reasoning capabilities. Validate web scraping and document analysis functionality.",
         "priority": "medium",
         "dependencies": [
-          8
+          3,
+          5,
+          6
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Specialized Agent Architecture",
+            "description": "Define extended architecture for Level2 and Level3 agents.",
+            "dependencies": [],
+            "details": "Tasks: Specify interfaces for planning, evidence retrieval, synthesis, reasoning steps. Extend base Agent (from Task 3) with research_context, reasoning_trace, tool_invocations. Define message types for: PLAN_REQUEST, EVIDENCE_RESULT, SYNTHESIS_REPORT. Output: architecture doc + stub classes Level2Agent, Level3Agent, ReasoningChainManager. Acceptance: Interfaces stable; unit tests for class instantiation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Level2Agent Research Orchestrator",
+            "description": "Build Level2Agent for multi-step research targeting >90% accuracy.",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Implement planning loop: decompose query -> generate step plan -> execute evidence gathering -> synthesize interim summaries -> final answer with citations. Add dynamic replanning on low confidence. Store reasoning_trace. Acceptance: Pass mock scenarios (>=90% accuracy on curated small set); logs show structured steps.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Web Scraping & Retrieval Layer",
+            "description": "Add compliant web scraping and structured retrieval utilities.",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Implement: robots.txt check, rate limiting, async fetch, HTML cleaner, content segmentation, metadata extraction (title, published date, source). Integrate simple caching and domain backoff. Provide scrape(url) and search(query) abstraction (stub search). Acceptance: Fetch 10 test sites without blocking; sanitized text returned; unit tests cover error cases.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Document Ingestion & Analysis Pipeline",
+            "description": "Support local/document inputs (PDF, HTML, text) for analysis.",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Implement loaders (PDF -> text with page refs, HTML -> main content, text). Add chunking (semantic & length-based), embedding stub hook, metadata preservation (source, page). Provide document_registry service. Acceptance: Ingest sample PDFs and HTML; chunks include source + location; test ensures consistent chunk boundaries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Multi-Source Synthesis & Evidence Management",
+            "description": "Aggregate, normalize, and track evidence across sources.",
+            "dependencies": [
+              "9.2",
+              "9.3",
+              "9.4"
+            ],
+            "details": "Implement EvidenceStore (add, rank, deduplicate, cite). Scoring: relevance, freshness, diversity. Synthesis module: produce structured summary (claims, support, conflicts). Citation formatter. Acceptance: Given mixed sources, duplicate sentences merged; summary lists conflicts; citations trace back to source id.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Advanced Prompt & Reasoning Chain Framework",
+            "description": "Create reusable prompt templates and reasoning utilities.",
+            "dependencies": [
+              "9.2",
+              "9.5"
+            ],
+            "details": "Implement: Chain templates (Plan, Gather, Evaluate, Refine), self-critique loop, confidence scoring heuristic, fallback strategies (re-plan on low confidence), context window optimizer. Provide PromptTemplate registry. Acceptance: Reasoning chain object produces structured JSON steps; self-critique reduces factual error rate in test set by measurable margin (>10%).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement Level3Agent Deep Analyzer",
+            "description": "Build Level3Agent for complex analytical reasoning (>80% accuracy).",
+            "dependencies": [
+              "9.6"
+            ],
+            "details": "Enhance with hypothesis generation, comparative analysis, contradiction detection, scenario modeling. Integrate iterative refinement: hypothesis -> test (evidence subset) -> revise. Provide uncertainty quantification (confidence bands). Acceptance: On complex benchmark subset achieve >=80% accuracy; output includes hypotheses, tests, final synthesis.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Benchmark & Evaluation Harness",
+            "description": "Create GAIA L2/L3 evaluation and regression suite.",
+            "dependencies": [
+              "9.2",
+              "9.7"
+            ],
+            "details": "Implement dataset loader (placeholders), run harness capturing accuracy, step count, latency, token usage. Comparison report vs targets (L2 90%, L3 80%). Add JSONL results export and trend tracker. Acceptance: Single command produces metrics report; failing targets flagged; regression run stores timestamped artifacts.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 10,
-        "title": "Implement GAIA Benchmark Runner and Metrics System",
-        "description": "Create comprehensive GAIA benchmark runner with performance metrics, reporting, and optimization tracking",
-        "details": "1. Implement /gaia/benchmark endpoint for automated testing\n2. Create benchmark data ingestion and processing system\n3. Build performance metrics collection and analysis\n4. Implement detailed reporting with accuracy breakdowns\n5. Create optimization tracking and trend analysis\n6. Add automated performance regression detection\n7. Target >90% overall GAIA accuracy with detailed level reporting",
-        "testStrategy": "Benchmark runner accuracy validation, metrics collection verification, reporting system testing, performance regression detection testing",
+        "title": "Complete WebUI with Agent Monitoring and Configuration",
+        "description": "Enhance WebUI with agent status monitoring, provider configuration, and performance metrics",
+        "details": "Add agent status dashboard showing active agents and health metrics. Implement provider configuration interface for API keys and settings. Create performance monitoring charts for GAIA benchmark results. Add real-time agent communication visualization. Implement configuration persistence and import/export functionality.\n<info added on 2025-09-18T14:09:13.569Z>\nBased on the research findings from chrome://ai-browser/ protocol development, the WebUI implementation requires specific Chromium integration patterns. Create AIBrowserUI WebUIController class that registers with Chromium's WebUIControllerFactory for chrome://ai-browser/ protocol handling. Implement WebSocket endpoint at /ws/agent-status for real-time monitoring integration with FastAPI service on localhost:3456. Configure CORS middleware to allow chrome://ai-browser origin for secure cross-protocol communication. Add agent communication flow visualization showing ACP message routing between Level 1, 2, and 3 agents with message flow diagrams. Integrate performance metrics display with GAIA benchmark results using Chart.js or D3.js for interactive visualization. Implement browser localStorage or IndexedDB for configuration persistence with import/export functionality for team sharing. Add security considerations for API key management in browser environment with client-side encryption options.\n</info added on 2025-09-18T14:09:13.569Z>\n<info added on 2025-09-18T14:30:55.584Z>\nResearch-backed architectural recommendations for WebUI monitoring dashboard implementation: Adopt event-driven architecture with WebSocket-based real-time monitoring system using Server-Sent Events for one-way status updates and bidirectional WebSocket connections for agent communication display. Implement React Query with real-time subscriptions for efficient state management and virtual scrolling for large agent lists. Design modular provider configuration system with client-side encryption for API keys, environment variable fallbacks, and role-based access control with audit logging. Create hybrid persistence approach combining browser localStorage for user preferences, FastAPI backend storage for sensitive data, and file-based JSON exports with version control integration. Implement responsive grid layout with Agent Overview Panel, Real-time Communication Feed, Performance Charts Section, Configuration Panel, and System Status Bar. Use interactive network diagram for agent communication with node-link visualization, message queue status indicators, and communication latency tracking. Recommended technology stack: Zustand/Redux Toolkit for state management, Socket.IO client for WebSocket connections, Chart.js with react-chartjs-2 for visualization, Material-UI/Ant Design for UI components. Define comprehensive configuration schema for import/export with version control, timestamp tracking, and encrypted export options for production environments. Integrate performance metrics visualization with time-series charts, heatmaps for agent comparison, real-time sparklines, and benchmark comparison tables with historical data tracking.\n</info added on 2025-09-18T14:30:55.584Z>",
+        "testStrategy": "Test agent status updates in real-time. Verify configuration changes persist across sessions. Validate performance metrics accuracy. Test configuration import/export functionality. Check WebUI performance under load.",
         "priority": "medium",
         "dependencies": [
+          7,
           9
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Architect Monitoring & Configuration Foundation",
+            "description": "Define frontend architecture, data contracts, and real-time channels for monitoring and configuration.",
+            "dependencies": [],
+            "details": "Deliverables: UI route structure, TypeScript interfaces (AgentStatus, ProviderConfig, GaiaMetricSeries), REST + WebSocket integration layer, event naming conventions. Define polling fallback, error normalization, schema for persisted settings (versioned JSON). Prep endpoints: /agents/status, /config/providers, /metrics/gaia, /stream/agents. Security: redact secrets client-side. Acceptance: All interface typings stable; mock services return sample payloads; WebSocket connects & retries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Agent Status Dashboard",
+            "description": "Build dashboard showing active agents, health, and resource indicators.",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Components: AgentList, AgentHealthPanel, AggregateStats. Metrics: latency avg/p95, uptime %, last heartbeat, queue depth. Visuals: status badges, sortable table, color-coded health. Auto-refresh via WebSocket diff updates; fallback 10s poll. Edge cases: stale agents > timeout flagged. Tests: simulate add/remove agents, degraded health state, latency spike highlighting.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Provider Configuration Interface",
+            "description": "Create secure UI to manage provider API keys and settings.",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Features: list providers, add/update masked keys, toggle enablement, rate limit sliders, model preference ordering. Client-side encryption placeholder (if backend supports). Validation: key format patterns, required scopes. Persist via POST/PUT /config/providers. Display last updated + checksum hash fragment. Tests: create, update, disable provider; refresh retains state after page reload.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Performance Metrics Visualization (GAIA)",
+            "description": "Add charts and tables for GAIA benchmark performance history.",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Views: Overview (latest run KPIs), Historical Trends (line charts), Complexity Breakdown (stacked bars), Run Comparison selector. Data shaping: normalize metrics into time-series keyed by metric_id. Chart lib with lazy loading & skeleton states. Include accuracy, latency, token throughput. Tooltips with delta vs previous run. Tests: render with empty, single, multi-run datasets; verify sorting & delta calculations.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Real-time Agent Communication Visualization",
+            "description": "Visualize live message flow between agents and system.",
+            "dependencies": [
+              "10.2",
+              "10.1"
+            ],
+            "details": "Graph view: nodes (agents), animated edges for messages. Message stream panel with filtering (agent, type, severity). Batch updates every 300ms to reduce reflow. Backpressure handling: cap 500 messages, older ones summarized. Click agent -> detail drawer (recent errors, latency trend sparkline). Tests: burst of messages (1k/min) maintains FPS > 50; filter accuracy; disconnection recovery.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Persistence & Import/Export",
+            "description": "Implement durable storage and JSON import/export for configs and metrics snapshots.",
+            "dependencies": [
+              "10.3",
+              "10.4"
+            ],
+            "details": "Persistence abstraction wrapping local backend (e.g., /storage/config, /storage/metrics). Export bundle: version, timestamp, providers (redacted), UI prefs, cached last N GAIA summaries. Import validation: schema version check, dry-run report, partial merge strategy. Provide download/upload UI with progress + error panel. Tests: version mismatch warning, round-trip integrity, corrupted file rejection.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Performance & UX Optimization",
+            "description": "Optimize rendering, network usage, and perceived responsiveness.",
+            "dependencies": [
+              "10.2",
+              "10.3",
+              "10.4",
+              "10.5",
+              "10.6"
+            ],
+            "details": "Techniques: memoization of heavy components, virtualized lists (messages, agents), request deduping, WebSocket message coalescing, idle-time prefetch of charts. Add dynamic FPS + render time diagnostics panel (dev mode). Implement cache TTL for GAIA metrics (e.g., 30s). Lighthouse & Core Web Vitals baseline + target thresholds. Tests: measure dashboard load < 2s with 200 agents; memory stable after 10 min stream; no redundant network calls in performance tab.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Implement GAIA Benchmark Runner and Performance Metrics",
+        "description": "Create comprehensive GAIA benchmark runner with detailed performance tracking and reporting",
+        "details": "Implement /gaia/benchmark endpoint for automated benchmark execution. Create GAIAMetrics data model for performance tracking. Add benchmark result storage and historical comparison. Implement detailed reporting with accuracy breakdowns by complexity level. Add performance optimization recommendations based on results.\n<info added on 2025-09-18T14:32:16.206Z>\nResearch findings indicate the GAIA benchmark runner should integrate tightly with existing project architecture components. Key architectural considerations: leverage Task 8's API Interception Service to benchmark against different AI providers through the Anthropic compatibility layer, utilize Task 5's Planning Agent routing logic for distributing benchmark tasks across the three complexity levels, and integrate with Task 10's WebUI system for real-time monitoring and reporting dashboards. The benchmark execution engine should implement a hub-and-spoke architecture similar to Task 4's ACP Runtime, with the runner serving as central coordinator for task distribution to specialized agents (Level 1-3). Performance tracking should extend the ACP message structure from Task 3 to include agent_path tracking showing which agents handled each task, enabling analysis of optimal agent combinations per complexity level. Storage design should use time-series database approach for temporal analysis of agent swarm optimization over time. The adaptive optimization engine should provide agent configuration tuning recommendations including optimal timeout values, memory allocation based on task types, and concurrency settings for maximum throughput. Implementation should follow three-phase approach: Phase 1 focuses on core infrastructure integration with existing FastAPI service and ACP routing, Phase 2 adds comprehensive metrics and WebUI integration, Phase 3 implements the AI-powered recommendation system for configuration optimization.\n</info added on 2025-09-18T14:32:16.206Z>",
+        "testStrategy": "Run complete GAIA benchmark suite. Verify accuracy calculations for all complexity levels. Test benchmark result storage and retrieval. Validate performance metric accuracy against manual calculations.",
+        "priority": "medium",
+        "dependencies": [
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define GAIAMetrics Data Model",
+            "description": "Design and implement unified data model for benchmark metrics.",
+            "dependencies": [],
+            "details": "Create GAIAMetrics schema: fields for benchmark_run_id, timestamp, agent_id, task_id, complexity_level, correctness, latency_ms (p50/p95/p99), token_usage (prompt/completion/total), cost_estimate, error_type, model_version, environment_hash. Add aggregation helpers (accuracy_by_complexity, latency_profiles). Include validation and serialization utilities.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Benchmark Result Storage Layer",
+            "description": "Persist metrics and raw benchmark outputs.",
+            "dependencies": [
+              "11.1"
+            ],
+            "details": "Create repository/DAO for GAIAMetrics with insert_batch, fetch_by_run, fetch_history(agent_id, complexity_level), latest_runs(limit). Add indices on (agent_id, complexity_level, timestamp). Support optional in-memory + persistent (e.g., SQLite/Postgres) backend abstraction. Implement migration script for tables: benchmark_runs, benchmark_metrics, benchmark_metadata.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build Benchmark Execution Engine & /gaia/benchmark Endpoint",
+            "description": "Execute GAIA benchmark suite and stream structured results.",
+            "dependencies": [
+              "11.1",
+              "11.2"
+            ],
+            "details": "Create BenchmarkRunner orchestrating task loading, agent invocation, timeout handling, parallelism controls, and metric capture (latency start/stop, correctness evaluation). Implement /gaia/benchmark POST with options: agent_id, complexity_levels, sample_size, parallelism, dry_run. Support streaming partial results and final summary. Store run metadata and metrics via storage layer.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Historical Analysis & Comparison Module",
+            "description": "Analyze trends and compute deltas vs prior runs.",
+            "dependencies": [
+              "11.2",
+              "11.3"
+            ],
+            "details": "Add HistoryAnalyzer that loads prior N runs, computes moving averages, accuracy delta per complexity_level, latency regressions, stability score (stddev of accuracy), failure rate trends. Provide API-ready summary object consumed by reporting layer. Flag regressions with configurable thresholds (e.g., >2% accuracy drop or >10% p95 latency increase).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Generate Reporting & Accuracy Breakdown",
+            "description": "Produce detailed benchmark report with structured sections.",
+            "dependencies": [
+              "11.3",
+              "11.4"
+            ],
+            "details": "Create ReportBuilder assembling: run metadata, accuracy by complexity level, confusion/error taxonomy, latency distribution, token usage summary, historical delta table, regression alerts. Output formats: JSON (primary), optional markdown summary. Add endpoint /gaia/benchmark/{run_id}/report returning full report JSON.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Optimization Recommendation Engine",
+            "description": "Generate actionable performance and accuracy recommendations.",
+            "dependencies": [
+              "11.4",
+              "11.5"
+            ],
+            "details": "Implement RecommendationEngine consuming report + historical metrics to output prioritized recommendations: prompt refinement targets, latency bottleneck hints (e.g., high p95 vs p50 ratio), complexity levels needing focused improvement, retry/backoff tuning, caching opportunities (high repetition patterns), model version upgrade suggestions. Include severity scoring and rationale. Expose via /gaia/benchmark/{run_id}/recommendations.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Setup Cross-Platform Build System",
+        "description": "Create automated build system for Windows, macOS, and Linux with CI/CD integration",
+        "details": "Configure Chromium build tools for cross-platform compilation. Set up GitHub Actions CI/CD pipeline with automated testing. Implement build artifact generation and distribution. Add automated testing across all target platforms. Configure build caching and optimization for <30min build time target.\n<info added on 2025-09-18T14:33:38.770Z>\nResearch findings indicate that for AI browser projects requiring Chromium integration, the build system must handle hybrid architecture combining Chromium's native GN/Ninja build system with modern CI/CD practices. Key implementation insights: Chromium builds require substantial computational resources (8+ cores, 32GB+ RAM) making efficient caching critical for <30min target. Sccache provides distributed compilation caching across CI runners. Component builds (is_component_build=true) enable faster iteration cycles. Multi-stage caching strategy should include Chromium build outputs, Python dependencies, and pre-built wheels. Testing strategy must cover browser integration (99% Chromium functionality preservation), service layer validation (FastAPI endpoints), and AI agent testing (GAIA benchmark execution per platform). Artifact generation requires platform-specific signing: Authenticode for Windows, Apple Developer ID for macOS, GPG for Linux. The build system should integrate custom GN targets for WebUI components, FastAPI service builds, and agent system compilation within the Chromium build pipeline.\n</info added on 2025-09-18T14:33:38.770Z>",
+        "testStrategy": "Verify builds succeed on all target platforms. Test automated CI/CD pipeline execution. Validate build artifacts work correctly on each platform. Measure build time against 30-minute target.",
+        "priority": "low",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Chromium Toolchain & Baseline Configuration",
+            "description": "Install and pin depot_tools and establish reproducible baseline Chromium build config.",
+            "dependencies": [],
+            "details": "Tasks: 1) Fork Chromium repo sync with pinned commit. 2) Install depot_tools and add to PATH in automation. 3) Define baseline .gclient and args.gn (is_official_build=false, is_component_build=true for faster iteration, symbol_level=1). 4) Document required SDKs (Win: VS Build Tools + Windows 10 SDK; macOS: Xcode + command line tools; Linux: clang toolchain + sysroot). 5) Verify local ninja build completes for one platform (Linux) to establish baseline. 6) Capture build time and binary size metrics as initial benchmark. 7) Store shared configuration scripts (bootstrap_build.sh, verify_env.py).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Cross-Platform Build Configuration",
+            "description": "Add GN/Ninja configurations for Windows, macOS, and Linux with platform-specific args and patches.",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "Tasks: 1) Create per-platform args templates (args_linux.gn, args_win.gn, args_mac.gn). 2) Enable thin_lto=true, use_jumbo_build=true where stable. 3) Apply minimal patches for WebUI integration paths. 4) Validate each platform config builds locally or via isolated runner. 5) Add Python script generate_args.py to emit args.gn per platform. 6) Record per-platform build metrics (duration, peak RAM). 7) Update documentation BUILDING.md with platform prerequisites.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "GitHub Actions CI/CD Pipeline Setup",
+            "description": "Implement matrix workflow to build Chromium fork across all platforms with triggers.",
+            "dependencies": [
+              "12.2"
+            ],
+            "details": "Tasks: 1) Create .github/workflows/build.yml with os matrix [ubuntu-latest, windows-2022, macos-13]. 2) Add concurrency group to avoid overlapping long builds. 3) Cache depot_tools + cloned source shallow parts where feasible. 4) Inject GN args via generate_args.py. 5) Add workflow_dispatch, push (main), pull_request triggers. 6) Upload raw build logs as artifacts. 7) Add status badge and required checks configuration. 8) Redact secrets via env vars.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Automated Test Integration",
+            "description": "Integrate unit and smoke tests into CI matrix with failure gating.",
+            "dependencies": [
+              "12.3"
+            ],
+            "details": "Tasks: 1) Select a fast subset of Chromium test targets (e.g., base_unittests, ui_unittests). 2) Add custom smoke test launching chrome with chrome://ai-browser/. 3) Add test stage after successful build using Ninja test targets. 4) Parse results into JUnit XML (convert with script) and upload for CI visualization. 5) Fail build on test failure; mark flaky tests list for quarantine. 6) Timebox total test phase (<8 minutes). 7) Collect coverage feasibility (optional note).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Artifact Packaging & Distribution",
+            "description": "Produce compressed platform-specific build artifacts and publish releases.",
+            "dependencies": [
+              "12.3",
+              "12.4"
+            ],
+            "details": "Tasks: 1) Define artifact structure (bin/, symbols/, licenses/). 2) Strip or minimize symbols except where needed (separate symbols zip). 3) Package per-platform (zip for Windows, tar.xz for Linux/macOS). 4) Upload artifacts in CI with retention policy (e.g., 14 days for PRs). 5) Add release workflow tagging main commits (manual dispatch) publishing artifacts + checksum (sha256). 6) Generate SBOM (cyclonedx) if feasible for dependencies. 7) Document download and run instructions.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Build Caching & Dependency Layering",
+            "description": "Introduce and tune caching (sccache/ccache, GN build output, dependency downloads).",
+            "dependencies": [
+              "12.2",
+              "12.3"
+            ],
+            "details": "Tasks: 1) Evaluate ccache vs sccache (use sccache for cross-platform consistency). 2) Integrate sccache server invocation in workflow steps. 3) Cache sccache directory keyed by hash of (compiler version + GN args). 4) Cache third_party prebuilt toolchains where license-compatible. 5) Persist partial out/ dir cautiously (only object files) to speed incremental PR builds. 6) Measure cache hit rate; log stats. 7) Establish cache invalidation strategy on toolchain or args changes.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Build Performance Optimization & Monitoring",
+            "description": "Reduce build time below 30 minutes and add ongoing telemetry.",
+            "dependencies": [
+              "12.5",
+              "12.6",
+              "12.4"
+            ],
+            "details": "Tasks: 1) Capture baseline times per platform with caching enabled. 2) Enable jumbo build, thin LTO, parallel link tuning (set ninja -j based on cores). 3) Identify largest compile units (ninja -d stats) and evaluate partitioning. 4) Add timing summary script posting comment on PR with per-phase durations. 5) Set alert if build exceeds 30 min (GitHub Actions job output + soft fail annotation). 6) Track rolling average build time via artifact (JSON metrics). 7) Document optimization playbook and future opportunities (remote execution, distributed cache).",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
-      "created": "2025-09-18T11:06:56.114Z",
-      "updated": "2025-09-18T11:06:56.114Z",
+      "created": "2025-09-18T12:35:28.267Z",
+      "updated": "2025-09-19T00:44:02.444Z",
       "description": "Tasks for master context"
     }
   }
