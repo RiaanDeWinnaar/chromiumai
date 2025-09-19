@@ -1,0 +1,19 @@
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2014 The Chromium Authors
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "ai_browser_integration.h"
+ #include "chrome/browser/chrome_browser_main.h"
+@@ -50,6 +51,9 @@ int ChromeBrowserMain(const content::MainFunctionParams& parameters,
+   // Initialize the Chrome browser process.
+   ChromeBrowserMainParts* browser_main_parts = CreateChromeBrowserMainParts();
+ 
++  // Initialize AI Browser integration
++  InitializeAIBrowserIntegration();
++
+   int result = content::BrowserMain(browser_main_parts, parameters);
+ 
+   return result;
